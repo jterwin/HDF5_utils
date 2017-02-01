@@ -30,15 +30,19 @@ endif
 LDFLAGS = -lhdf5 -lhdf5_fortran
 
 
-hdf5_test.x: HDF5_utils.o main.o 
-	$(FC) $(FFLAGS) $(LDINC) $(LDLIB) $(LDFLAGS) -o hdf5_test.x HDF5_utils.o main.o 
+.PHONY: clean docs
 
+
+hdf5_test.x: HDF5_utils.o main.o 
+	$(FC) $(FFLAGS) $(LDINC) $(LDLIB) $(LDFLAGS) -o $@ $^
 
 main.o: HDF5_utils.o
 
 %.o : %.f90
 	$(FC) $(FFLAGS) $(LDINC) -c -o $@ $<
 
+docs:
+	cd docs; doxygen HDF5_utils.doxy
 
 clean:
 	rm -f *.o *.mod *.x

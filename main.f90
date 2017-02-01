@@ -1,28 +1,72 @@
 program hdf5_test
 
-  use precision, only: dp
+  use, intrinsic :: iso_fortran_env, dp=>real64
   implicit none
   
-  integer :: ii, jj
-  real(dp) :: data1(8), data2(4,6)
+  integer :: ii, jj, kk, ll
+  real(dp) :: data0, data1(8), data2(4,6), data3(4,6,8), data4(4,6,8,10)
 
   ! fill in data
+  data0 = 137.0_dp
+  
   do ii = 1, 8
      data1(ii) = 10 + ii
   end do
+  
   do ii = 1, 4
      do jj = 1, 6
         data2(ii,jj) = (ii-1)*6 + jj
      end do
   end do
 
+  do ii = 1, 4
+     do jj = 1, 6
+        do kk = 1, 8
+           data3(ii,jj,kk) = ((ii-1)*6 + jj -1)*8 + kk
+        end do
+     end do
+  end do
+
+  do ii = 1, 4
+     do jj = 1, 6
+        do kk = 1, 8
+           do ll = 1, 10
+              data4(ii,jj,kk,ll) = (((ii-1)*6 + jj -1)*8 + kk - 1)*10 + ll
+           end do
+        end do
+     end do
+  end do
+
+  call hdf5_types()
+  
   call test_low_level()
 
   call test_high_level()
 
 contains
 
+  
+  subroutine hdf5_types()
+    use hdf5
 
+    integer :: hdferror
+
+    call h5open_f(hdferror)
+
+    write(*,*) H5T_NATIVE_DOUBLE
+    write(*,*) H5T_IEEE_F64BE
+    write(*,*) H5T_IEEE_F64LE
+
+    write(*,*) H5T_NATIVE_REAL
+    write(*,*) H5T_IEEE_F32BE
+    write(*,*) H5T_IEEE_F32LE 
+    
+    call h5close_f(hdferror)
+
+  end subroutine hdf5_types
+
+
+  !>  \brief write to an hdf5 file using the low level subroutines
   subroutine test_low_level()
 
     use hdf5
@@ -86,11 +130,19 @@ contains
 
     write(*,'(A)') "test_high_level"
 
-    call hdf_open(file_id, filename)
-
-    call hdf_write_dataset_double2(file_id, data2, "data2")
-    
+    call hdf_open(file_id, filename, STATUS='NEW')
+    call hdf_write_dataset_double(file_id, "data0", data0)
+    call hdf_write_dataset_double(file_id, "data1", data1)
+    call hdf_write_dataset_double(file_id, "data2", data2)
+    call hdf_write_dataset_double(file_id, "data3", data3)
+    call hdf_write_dataset_double(file_id, "data4", data4)
     call hdf_close(file_id)
+
+
+    call hdf_open(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+    call hdf_read_dataset_double_1(file_id, "data1", data1)
+    call hdf_close(file_id)
+
 
   end subroutine test_high_level
 
