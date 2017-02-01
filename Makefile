@@ -26,6 +26,15 @@ ifeq ($(UNAME_S),Darwin)
   LDLIB = -L/opt/local/lib
 endif
 
+# add include and library paths on HIPAS
+UNAME_N := $(shell uname -n)
+ifeq ($(UNAME_S),hipas.lpl.arizona.edu)
+  LDINC = -I/usr/local/include
+  LDLIB = -L/usr/lib64 -L/usr/local/lib
+  #LDINC = -I/usr/local/hdf5/include
+  #LDLIB = -L/usr/lib64 -L/usr/local/hdf5/lib
+endif
+
 # add hdf5 support 
 LDFLAGS = -lhdf5 -lhdf5_fortran
 
