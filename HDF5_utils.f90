@@ -1,9 +1,10 @@
-!!$!
-!!$!
-!!$!
-!!$module precision
-!!$  integer, parameter :: dp = kind(1.0d0)
-!!$end module precision
+!
+!
+!>  \brief real/double precision kinds
+module kinds
+  integer, parameter :: sp = kind(1.0)
+  integer, parameter :: dp = kind(1.0d0)
+end module kinds
 
 
 !>  \brief a set of high level wrapper subroutine for HDF5
@@ -27,7 +28,8 @@
 !>    creating a dataset. This would make the hdf5 file more portable.
 module HDF5_utils
   
-  use, intrinsic :: iso_fortran_env, dp=>real64
+  !use, intrinsic :: iso_fortran_env, only: dp=>real64
+  use kinds
   use hdf5
   implicit none
 
