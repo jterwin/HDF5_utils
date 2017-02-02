@@ -3,6 +3,8 @@
 FC = gfortran
 
 
+GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+
 ifeq ($(FC),gfortran)
 
   #FFLAGS = -O2
@@ -11,11 +13,15 @@ ifeq ($(FC),gfortran)
   #FFLAGS = -O0 -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=all -fbacktrace
   #FFLAGS = -O3 -Wall -Wextra -Wimplicit-interface -fcheck=all -fbacktrace -ffpe-trap=zero,overflow,underflow,denormal
 
+  FFLAGS += -cpp -DVERSION=\"$(GIT_VERSION)\"
+
 endif
 ifeq ($(FC),ifort)
 
   FFLAGS = -O2
-#FLAGS = -Ofast
+  #FFLAGS = -Ofast
+
+  FFLAGS += -fpp -DVERSION=\"$(GIT_VERSION)\"
 
 endif
 

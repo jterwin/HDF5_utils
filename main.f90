@@ -125,9 +125,12 @@ contains
 
     use hdf5_utils
 
-    character(len=16) :: filename = "test_hl.h5"
-
+    
     integer(HID_T) :: file_id
+
+    character(len=16) :: filename = "test_hl.h5"
+    character(len=8) :: date
+    character(len=10) :: time
 
     write(*,'(A)') "test_high_level"
 
@@ -137,11 +140,28 @@ contains
     call hdf_write_dataset_double(file_id, "data2", data2)
     call hdf_write_dataset_double(file_id, "data3", data3)
     call hdf_write_dataset_double(file_id, "data4", data4)
+
+    ! write attribute to a dataset
+    call hdf_write_attr_double(file_id, "data1", "rank", 42.0_dp)
+
+    ! write attribute to the file (and get version from Makefile)
+    call date_and_time(DATE=date, TIME=time)
+    call hdf_write_attr_string(file_id, "", "date/time", date // "/" // time)
+    
+#if defined(VERSION)
+    call hdf_write_attr(file_id, "", "version", VERSION)
+#endif
+    
     call hdf_close(file_id)
 
 
     call hdf_open(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
-    call hdf_read_dataset_double_1(file_id, "data1", data1)
+    call hdf_read_dataset_double(file_id, "data0", data0)
+    call hdf_read_dataset_double(file_id, "data1", data1)
+    call hdf_read_dataset_double(file_id, "data2", data2)
+    call hdf_read_dataset_double(file_id, "data3", data3)
+    call hdf_read_dataset_double(file_id, "data4", data4)
+
     call hdf_close(file_id)
 
 
