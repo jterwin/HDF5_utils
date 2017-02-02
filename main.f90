@@ -5,7 +5,8 @@ program hdf5_test
   implicit none
   
   integer :: ii, jj, kk, ll
-  real(dp) :: data0, data1(8), data2(4,6), data3(4,6,8), data4(4,6,8,10)
+  real(dp) :: data0, data1(8), data2(4,6)
+  integer :: data3(4,6,8), data4(4,6,8,10)
 
   ! fill in data
   data0 = 137.0_dp
@@ -38,15 +39,81 @@ program hdf5_test
      end do
   end do
 
-  call hdf5_types()
-  
-  call test_low_level()
+  !call hdf5_types()
+  !call test_low_level()
 
   call test_high_level()
 
 contains
 
-  
+ 
+  !>  \brief write to an hdf5 file using the low level subroutines
+  subroutine test_high_level()
+
+    use hdf5_utils
+
+    integer(HID_T) :: file_id
+
+    character(len=16) :: filename = "test_hl.h5"
+    character(len=8) :: date
+    character(len=10) :: time
+    character(len=32) :: ostring
+
+    write(*,'(A)') "test_high_level"
+
+    !
+    ! test writing
+    !
+    
+    ! open file
+    call hdf_open(file_id, filename, STATUS='NEW')
+
+    ! write out some datasets
+    call hdf_write_dataset(file_id, "data0", data0)
+    call hdf_write_dataset(file_id, "data1", data1)
+    call hdf_write_dataset(file_id, "data2", data2)
+    call hdf_write_dataset(file_id, "data3", data3)
+    call hdf_write_dataset(file_id, "data4", data4)
+
+    ! write attribute to a dataset
+    call hdf_write_attr(file_id, "data1", "rank", 1.618_dp)
+    call hdf_write_attr(file_id, "data4", "luckynumber", 7)
+    
+    ! write attribute to the file (and get version from Makefile)
+    call date_and_time(DATE=date, TIME=time)
+    call hdf_write_attr(file_id, "", "date/time", date // "/" // time)
+#if defined(VERSION)
+    call hdf_write_attr(file_id, "", "version", VERSION)
+#endif
+
+    call hdf_close(file_id)
+
+    
+    !
+    ! test reading
+    !
+    
+    call hdf_open(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+    
+    call hdf_read_dataset(file_id, "data0", data0)
+    call hdf_read_dataset(file_id, "data1", data1)
+    call hdf_read_dataset(file_id, "data2", data2)
+    call hdf_read_dataset(file_id, "data3", data3)
+    call hdf_read_dataset(file_id, "data4", data4)
+
+    call hdf_read_attr(file_id, "data1", "rank", data0)
+    write(*,*) "rank: ", data0
+    call hdf_read_attr(file_id, "", "version", ostring)
+    write(*,*) "version: ", ostring
+    call hdf_read_attr(file_id, "", "date/time", ostring)
+    write(*,*) "date/time: ", ostring
+    
+    call hdf_close(file_id)
+
+  end subroutine test_high_level
+
+
+  !>  \brief write out some H5T types for reference
   subroutine hdf5_types()
     use hdf5
 
@@ -107,65 +174,13 @@ contains
     ! close all id's
     call h5dclose_f(dset_id, hdferror)
     write(*,'(A20,I0)') "h5dclose: ", hdferror
-
     call h5sclose_f(dspace_id, hdferror)
     write(*,'(A20,I0)') "h5sclose: ", hdferror
-
     call h5fclose_f(file_id, hdferror)
     write(*,'(A20,I0)') "h5fclose: ", hdferror
-
     call h5close_f(hdferror)
     write(*,'(A20,I0)') "h5close: ", hdferror
 
-
   end subroutine test_low_level
 
-  
-  subroutine test_high_level()
-
-    use hdf5_utils
-
-    
-    integer(HID_T) :: file_id
-
-    character(len=16) :: filename = "test_hl.h5"
-    character(len=8) :: date
-    character(len=10) :: time
-
-    write(*,'(A)') "test_high_level"
-
-    call hdf_open(file_id, filename, STATUS='NEW')
-    call hdf_write_dataset_double(file_id, "data0", data0)
-    call hdf_write_dataset_double(file_id, "data1", data1)
-    call hdf_write_dataset_double(file_id, "data2", data2)
-    call hdf_write_dataset_double(file_id, "data3", data3)
-    call hdf_write_dataset_double(file_id, "data4", data4)
-
-    ! write attribute to a dataset
-    call hdf_write_attr_double(file_id, "data1", "rank", 42.0_dp)
-
-    ! write attribute to the file (and get version from Makefile)
-    call date_and_time(DATE=date, TIME=time)
-    call hdf_write_attr_string(file_id, "", "date/time", date // "/" // time)
-    
-#if defined(VERSION)
-    call hdf_write_attr(file_id, "", "version", VERSION)
-#endif
-    
-    call hdf_close(file_id)
-
-
-    call hdf_open(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
-    call hdf_read_dataset_double(file_id, "data0", data0)
-    call hdf_read_dataset_double(file_id, "data1", data1)
-    call hdf_read_dataset_double(file_id, "data2", data2)
-    call hdf_read_dataset_double(file_id, "data3", data3)
-    call hdf_read_dataset_double(file_id, "data4", data4)
-
-    call hdf_close(file_id)
-
-
-  end subroutine test_high_level
-
-  
 end program hdf5_test
