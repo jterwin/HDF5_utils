@@ -1,0 +1,9 @@
+/**
+
+\mainpage HDF5 utilities
+
+The purpose of this library is to provide a high level interface into HDF5, extending the capabilities of H5LT. 
+
+
+
+*/

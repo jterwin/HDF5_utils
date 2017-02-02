@@ -2,7 +2,8 @@
 
 FC = gfortran
 
-
+# GIT tag usage
+# >>> git tag -a v1.4 -m "my version 1.4"
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 
 ifeq ($(FC),gfortran)

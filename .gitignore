@@ -28,3 +28,6 @@
 *.out
 *.app
 *.x
+
+*.h5
+docs/html/
