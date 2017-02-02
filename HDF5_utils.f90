@@ -11,14 +11,14 @@ end module kinds
 !>
 !>  \par \b Features:
 !>   - opening and closing files
+!>   - creating/opening/closing groups
 !>   - reading and writing dataset (integer, double)
 !>     - uses generic interface to switch on rank and kind
 !>   - writing/reading attributes (integer, double, string)
-!>     - uses generic interfaces to switch on rank and kind 
+!>     - uses generic interfaces to switch on rank and kind
 !>
 !>  \todo
 !>   - reading and writing ( real, character/string)
-!>   - creating groups
 !>   - get_rank, get_dim, get_kind
 !>   - get_id
 !>   - check with nested
@@ -186,7 +186,7 @@ contains
   !>  \todo
   !>   - case insentive STATUS and ACTION
   !>   - delete file for REPLACE case
-  subroutine hdf_open(file_id, filename, STATUS, ACTION)
+  subroutine hdf_open_file(file_id, filename, STATUS, ACTION)
 
     integer(HID_T), intent(out) :: file_id            !< HDF5 id of the file
     character(len=*), intent(in) :: filename          !< filename
@@ -229,11 +229,11 @@ contains
     
     write(*,'(A20,I0)') "h5fcreate: ", hdferror
 
-  end subroutine hdf_open
+  end subroutine hdf_open_file
 
 
   !>  \brief closes a hdf5 file
-  subroutine hdf_close(file_id)
+  subroutine hdf_close_file(file_id)
 
     integer(HID_T), intent(in) :: file_id  !< file id to be closed
 
@@ -244,7 +244,52 @@ contains
     call h5fclose_f(file_id, hdferror)
     write(*,'(A20,I0)') "h5fclose: ", hdferror
 
-  end subroutine hdf_close
+    call h5close_f(hdferror)
+
+  end subroutine hdf_close_file
+
+  !
+  subroutine hdf_create_group(loc_id, group_name)
+
+    integer(HID_T), intent(in) :: loc_id
+    character(len=*), intent(in) :: group_name
+
+    integer(HID_T) :: grp_id
+    integer :: hdferror
+
+    call h5gcreate_f(loc_id, group_name, grp_id, hdferror)
+    write(*,'(A20,I0)') "h5gcreate: ", hdferror
+
+    call h5gclose_f(grp_id, hdferror)
+    write(*,'(A20,I0)') "h5gclose: ", hdferror
+
+  end subroutine hdf_create_group
+
+  !
+  subroutine hdf_open_group(loc_id, group_name, group_id)
+    
+    integer(HID_T), intent(in) :: loc_id
+    character(len=*), intent(in) :: group_name
+    integer(HID_T), intent(out) :: group_id
+    
+    integer :: hdferror
+
+    call h5gopen_f(loc_id, group_name, group_id, hdferror)
+    write(*,'(A20,I0)') "h5gcreate: ", hdferror
+    
+  end subroutine hdf_open_group
+
+  !
+  subroutine hdf_close_group(group_id)
+
+    integer(HID_T), intent(in) :: group_id
+    
+    integer :: hdferror
+
+    call h5gclose_f(group_id, hdferror)
+    write(*,'(A20,I0)') "h5gclose: ", hdferror
+    
+  end subroutine hdf_close_group
 
 
   !!----------------------------------------------------------------------------------------

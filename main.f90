@@ -52,7 +52,7 @@ contains
 
     use hdf5_utils
 
-    integer(HID_T) :: file_id
+    integer(HID_T) :: file_id, group_id
 
     character(len=16) :: filename = "test_hl.h5"
     character(len=8) :: date
@@ -66,7 +66,7 @@ contains
     !
     
     ! open file
-    call hdf_open(file_id, filename, STATUS='NEW')
+    call hdf_open_file(file_id, filename, STATUS='NEW')
 
     ! write out some datasets
     call hdf_write_dataset(file_id, "data0", data0)
@@ -81,19 +81,36 @@ contains
     
     ! write attribute to the file (and get version from Makefile)
     call date_and_time(DATE=date, TIME=time)
-    call hdf_write_attr(file_id, "", "date/time", date // "/" // time)
+    call hdf_write_attr(file_id, "", "date/time", date // ": " // time)
 #if defined(VERSION)
     call hdf_write_attr(file_id, "", "version", VERSION)
 #endif
 
-    call hdf_close(file_id)
+    !
+    ! use groups
+    !
+
+    ! relative access
+    call hdf_create_group(file_id, "group1")
+    call hdf_write_dataset(file_id, "group1/gdata1", data1)
+    call hdf_write_attr(file_id, "group1", "tag", "this is group 1")
+
+    ! absolute access
+    call hdf_create_group(file_id, "group2")
+    call hdf_open_group(file_id, "group2", group_id)
+    call hdf_write_dataset(group_id, "gdata2", data2)
+    call hdf_write_attr(group_id, "", "tag", "this is group 2")
+    call hdf_close_group(group_id)
+
+    ! close file
+    call hdf_close_file(file_id)
 
     
     !
     ! test reading
     !
     
-    call hdf_open(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
     
     call hdf_read_dataset(file_id, "data0", data0)
     call hdf_read_dataset(file_id, "data1", data1)
@@ -108,7 +125,7 @@ contains
     call hdf_read_attr(file_id, "", "date/time", ostring)
     write(*,*) "date/time: ", ostring
     
-    call hdf_close(file_id)
+    call hdf_close_file(file_id)
 
   end subroutine test_high_level
 
