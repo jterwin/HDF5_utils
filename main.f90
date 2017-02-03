@@ -5,11 +5,11 @@ program hdf5_test
   implicit none
   
   integer :: ii, jj, kk, ll
-  real(dp) :: data0, data1(8), data2(4,6)
-  integer :: data3(4,6,8), data4(4,6,8,10)
+  integer :: data0,  data2(4,6), data4(4,6,8,10)
+  real(dp) :: data1(8), data3(4,6,8)
 
   ! fill in data
-  data0 = 137.0_dp
+  data0 = 42
   
   do ii = 1, 8
      data1(ii) = 10 + ii
@@ -54,19 +54,21 @@ contains
 
     integer(HID_T) :: file_id, group_id
 
-    character(len=16) :: filename = "test_hl.h5"
     character(len=8) :: date
     character(len=10) :: time
     character(len=32) :: ostring
 
+    integer :: rank, dims(6)
+    integer, allocatable :: test4(:,:,:,:)
+    
     write(*,'(A)') "test_high_level"
 
     !
-    ! test writing
+    ! the basics
     !
     
     ! open file
-    call hdf_open_file(file_id, filename, STATUS='NEW')
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='NEW')
 
     ! write out some datasets
     call hdf_write_dataset(file_id, "data0", data0)
@@ -75,9 +77,38 @@ contains
     call hdf_write_dataset(file_id, "data3", data3)
     call hdf_write_dataset(file_id, "data4", data4)
 
+    ! close file
+    call hdf_close_file(file_id)
+
+    
+    !    
+    ! test reading
+    !
+    
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+
+    ! read in some datasets 
+    call hdf_read_dataset(file_id, "data0", data0)
+    call hdf_read_dataset(file_id, "data1", data1)
+    call hdf_read_dataset(file_id, "data2", data2)
+    call hdf_read_dataset(file_id, "data3", data3)
+    call hdf_read_dataset(file_id, "data4", data4)
+    
+    ! close file
+    call hdf_close_file(file_id)
+
+
+    !
+    ! use attribute
+    !
+
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READWRITE')
+
     ! write attribute to a dataset
-    call hdf_write_attribute(file_id, "data1", "rank", 1.618_dp)
-    call hdf_write_attribute(file_id, "data4", "luckynumber", 7)
+    call hdf_write_attribute(file_id, "data1", "rank", 7)
+    call hdf_write_attribute(file_id, "data4", "luckynumber", 1.618_dp)
     
     ! write attribute to the file (and get version from Makefile)
     call date_and_time(DATE=date, TIME=time)
@@ -86,28 +117,38 @@ contains
     call hdf_write_attribute(file_id, "", "version", VERSION)
 #endif
 
+    ! close file
+    call hdf_close_file(file_id)
+    
+    
     !
     ! use groups
     !
 
-    ! relative access
-    call hdf_create_group(file_id, "group1")
-    call hdf_write_dataset(file_id, "group1/gdata1", data1)
-    call hdf_write_attribute(file_id, "group1", "tag", "this is group 1")
+    ! open file
+    call hdf_open_file(file_id, "test_groups.h5", STATUS='NEW')
 
     ! absolute access
+    call hdf_create_group(file_id, "group1")
+    call hdf_write_dataset(file_id, "group1/data1", data1)
+    call hdf_write_attribute(file_id, "group1", "tag", "this is group 1")
+    call hdf_write_attribute(file_id, "group1/data1", "tag", "this is data1 in group 1")
+
+    ! relative access
     call hdf_create_group(file_id, "group2")
     call hdf_open_group(file_id, "group2", group_id)
-    call hdf_write_dataset(group_id, "gdata2", data2)
+    call hdf_write_dataset(group_id, "data2", data2)
     call hdf_write_attribute(group_id, "", "tag", "this is group 2")
+    call hdf_write_attribute(group_id, "data2", "tag", "this is data2 in group 2")
     call hdf_close_group(group_id)
 
     ! close file
     call hdf_close_file(file_id)
 
+
     
     !
-    ! test reading
+    ! test reading full
     !
     
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
@@ -124,9 +165,34 @@ contains
     write(*,*) "version: ", ostring
     call hdf_read_attribute(file_id, "", "date/time", ostring)
     write(*,*) "date/time: ", ostring
-    
+
+    ! close file
     call hdf_close_file(file_id)
 
+
+    !
+    ! reading an unkown size
+    !
+
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+
+    ! get rank
+    call hdf_get_rank(file_id, "data4", rank)
+    write(*,*) "rank(data4) = ", rank
+
+    ! get dimensions 
+    call hdf_get_dims(file_id, "data4", dims)
+    write(*,*) "dims(data4) = ", dims(1:rank)
+
+    ! allocate and read
+    allocate ( test4(dims(1), dims(2), dims(3), dims(4)) )
+    call hdf_read_dataset(file_id, "data4", data4)
+
+    ! close file
+    call hdf_close_file(file_id)
+
+    
   end subroutine test_high_level
 
 

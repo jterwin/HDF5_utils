@@ -1,12 +1,12 @@
-!>  \brief a set of high level wrapper subroutine for HDF5
+!>  \brief A set of high level wrapper subroutines for HDF5
 !>
 !>  \par \b Features:
 !>   - opening and closing files
 !>   - creating/opening/closing groups
 !>   - reading and writing dataset (integer, double)
-!>     - uses generic interface to switch on rank and kind
+!>     - uses a generic interface to switch on rank and kind
 !>   - writing/reading attributes (integer, double, string)
-!>     - uses generic interfaces to switch on rank and kind
+!>     - uses a generic interface to switch on rank and kind
 !>
 !>  \todo
 !>   - reading and writing ( real, strings )
@@ -34,10 +34,11 @@ module HDF5_utils
   public :: HID_T
   public :: hdf_open_file, hdf_close_file
   public :: hdf_create_group, hdf_open_group, hdf_close_group
+  public :: hdf_get_rank, hdf_get_dims
   public :: hdf_write_dataset, hdf_read_dataset
   public :: hdf_write_attribute, hdf_read_attribute
 
-  !>  \brief generic interface to write a dataset
+  !>  \brief Generic interface to write a dataset
   !> 
   !>  Supported types
   !>   - integers (scalar and 1d-6d arrays)
@@ -65,7 +66,7 @@ module HDF5_utils
      module procedure hdf_write_dataset_double_6
   end interface hdf_write_dataset
 
-  !>  \brief generic interface to read a dataset of doubles
+  !>  \brief Generic interface to read a dataset of doubles
   !> 
   !>  Supported types
   !>   - integers (scalar and 1d-6d arrays)
@@ -93,7 +94,7 @@ module HDF5_utils
      module procedure hdf_read_dataset_double_6
   end interface hdf_read_dataset
 
-  !>  \brief generic interface to write attribute
+  !>  \brief Generic interface to write attribute
   !> 
   !>  Supported types
   !>   - integers (scalar and 1d-6d arrays)
@@ -113,7 +114,7 @@ module HDF5_utils
      module procedure hdf_write_attr_double_1
   end interface hdf_write_attribute
 
-  !>  \brief generic interface to read attribute
+  !>  \brief Generic interface to read attribute
   !> 
   !>  Supported types
   !>   - integers (scalar and 1d-6d arrays)
@@ -127,6 +128,8 @@ module HDF5_utils
   !>  \param[in] data      attribute data to be written
   interface hdf_read_attribute
      module procedure hdf_read_attr_string
+     module procedure hdf_read_attr_integer_0
+     module procedure hdf_read_attr_integer_1
      module procedure hdf_read_attr_double_0
      module procedure hdf_read_attr_double_1
   end interface hdf_read_attribute
@@ -140,7 +143,11 @@ module HDF5_utils
 contains
 
   
-  !>  \brief opens file and return identifier
+  !>  \brief Opens file and return identifier
+  !>
+  !>  \todo
+  !>   - case insentive STATUS and ACTION
+  !>   - delete file for REPLACE case
   !>
   !>  | STATUS  | ACTION    | Description                          |
   !>  | :-----: | :-------: | :----------------------------------- |
@@ -150,24 +157,21 @@ contains
   !>  | OLD     | WRITE     | calls h5fopen with H5F_ACC_RDWR_F    |
   !>  | OLD     | READWRITE | calls h5fopen with H5F_ACC_RDWR_F    |
   !>
-  !>  \todo
-  !>   - case insentive STATUS and ACTION
-  !>   - delete file for REPLACE case
   subroutine hdf_open_file(file_id, filename, STATUS, ACTION)
 
     integer(HID_T), intent(out) :: file_id            !< HDF5 id of the file
-    character(len=*), intent(in) :: filename          !< filename
+    character(len=*), intent(in) :: filename          !< the HDF5 filename
     character(len=*), optional, intent(in) :: STATUS  !< file status (OLD, NEW, REPLACE)
     character(len=*), optional, intent(in) :: ACTION  !< file action (READ, WRITE, READWRITE)
 
     integer :: hdferror
     character(len=16) :: status2, action2
     
-    write(*,'(A)') "->hdf_open"
+    write(*,'(A)') "->hdf_open_file"
     
     ! open hdf5 interface
     call h5open_f(hdferror)
-    write(*,'(A20,I0)') "h5open: ", hdferror
+    !write(*,'(A20,I0)') "h5open: ", hdferror
 
     ! set defaults
     status2 = 'NEW'
@@ -194,71 +198,140 @@ contains
        stop
     end if
     
-    write(*,'(A20,I0)') "h5fcreate: ", hdferror
+    !write(*,'(A20,I0)') "h5fcreate: ", hdferror
 
   end subroutine hdf_open_file
 
 
-  !>  \brief closes a hdf5 file
+  !>  \brief Closes a hdf5 file
   subroutine hdf_close_file(file_id)
 
     integer(HID_T), intent(in) :: file_id  !< file id to be closed
 
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_close"
+    write(*,'(A)') "->hdf_close_file"
 
     call h5fclose_f(file_id, hdferror)
-    write(*,'(A20,I0)') "h5fclose: ", hdferror
+    !write(*,'(A20,I0)') "h5fclose: ", hdferror
 
     call h5close_f(hdferror)
 
   end subroutine hdf_close_file
 
-  !
+  
+  !>  \brief Create a new group
   subroutine hdf_create_group(loc_id, group_name)
 
-    integer(HID_T), intent(in) :: loc_id
-    character(len=*), intent(in) :: group_name
+    integer(HID_T), intent(in) :: loc_id         !< location id where to put the group
+    character(len=*), intent(in) :: group_name   !< name of the group
 
     integer(HID_T) :: grp_id
     integer :: hdferror
 
+    write(*,'(A)') "->hdf_create_group"
+
     call h5gcreate_f(loc_id, group_name, grp_id, hdferror)
-    write(*,'(A20,I0)') "h5gcreate: ", hdferror
+    !write(*,'(A20,I0)') "h5gcreate: ", hdferror
 
     call h5gclose_f(grp_id, hdferror)
-    write(*,'(A20,I0)') "h5gclose: ", hdferror
+    !write(*,'(A20,I0)') "h5gclose: ", hdferror
 
   end subroutine hdf_create_group
 
-  !
+  
+  !>  \brief Opens a group and returns the identifier
   subroutine hdf_open_group(loc_id, group_name, group_id)
     
-    integer(HID_T), intent(in) :: loc_id
-    character(len=*), intent(in) :: group_name
-    integer(HID_T), intent(out) :: group_id
+    integer(HID_T), intent(in) :: loc_id         !< location id where to put the group
+    character(len=*), intent(in) :: group_name   !< name of the group
+    integer(HID_T), intent(out) :: group_id      !< id for the group
     
     integer :: hdferror
 
+    write(*,'(A)') "->hdf_open_group"
+
     call h5gopen_f(loc_id, group_name, group_id, hdferror)
-    write(*,'(A20,I0)') "h5gcreate: ", hdferror
+    !write(*,'(A20,I0)') "h5gcreate: ", hdferror
     
   end subroutine hdf_open_group
 
-  !
+  
+  !>  \brief Close a group by identifier
   subroutine hdf_close_group(group_id)
 
-    integer(HID_T), intent(in) :: group_id
+    integer(HID_T), intent(in) :: group_id   !< id for the group
     
     integer :: hdferror
 
+    write(*,'(A)') "->hdf_close_group"
+
     call h5gclose_f(group_id, hdferror)
-    write(*,'(A20,I0)') "h5gclose: ", hdferror
+    !write(*,'(A20,I0)') "h5gclose: ", hdferror
     
   end subroutine hdf_close_group
 
 
+  !>  \brief Get the rank of a dataset
+  subroutine hdf_get_rank(loc_id, dset_name, rank)
+
+    integer(HID_T), intent(in) :: loc_id        !< location id
+    character(len=*), intent(in) :: dset_name   !< dataset name
+    integer, intent(out) :: rank                !< rank of the dataset
+
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    ! open dataset
+    call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
+
+    ! get dataspace
+    call h5dget_space_f(dset_id, dspace_id, hdferror)
+
+    ! get rank (ndims)
+    call h5sget_simple_extent_ndims_f(dspace_id, rank, hdferror)
+
+    ! close id's
+    call h5sclose_f(dspace_id, hdferror)  
+    call h5dclose_f(dset_id, hdferror)
+    
+  end subroutine hdf_get_rank
+
+
+  !>  \brief get the dimensions of a dataset
+  subroutine hdf_get_dims(loc_id, dset_name, dims)
+
+    integer(HID_T), intent(in) :: loc_id        !< location id
+    character(len=*), intent(in) :: dset_name   !< name of dataset
+    integer, intent(out) :: dims(:)             !< dimensions of the dataset
+
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: rank
+    integer(HSIZE_T) :: dset_dims(6), max_dims(6)
+    integer :: hdferror
+
+    ! open dataset
+    call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
+
+    ! get dataspace
+    call h5dget_space_f(dset_id, dspace_id, hdferror)
+
+    ! get rank (ndims)
+    call h5sget_simple_extent_ndims_f(dspace_id, rank, hdferror)
+    
+    ! get rank (ndims)
+    call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
+    dims(1:rank) = int(dset_dims(1:rank))
+
+    ! close id's
+    call h5sclose_f(dspace_id, hdferror)  
+    call h5dclose_f(dset_id, hdferror)
+
+  end subroutine hdf_get_dims
+  
+  !     - hdf_get_kind   (H5Dget_type)
+
+  
   !!----------------------------------------------------------------------------------------
   !!--------------------------------hdf_write_dataset_double--------------------------------
   !!----------------------------------------------------------------------------------------
@@ -1590,13 +1663,86 @@ contains
     
   end subroutine hdf_read_attr_double_1
 
-!!$  !>  \brief writes a scalar attribute
-!!$  subroutine hdf_write_attr_integer_0()
-!!$  end subroutine hdf_write_attr_integer_0
+  !  \brief writes a scalar attribute
+  subroutine hdf_read_attr_integer_0(loc_id, obj_name, attr_name, data)
+    
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    integer, intent(out) :: data                ! data to write to attribute
 
-!!$  !>  \brief writes a scalar attribute
-!!$  subroutine hdf_write_attr_integer_1()
-!!$  end subroutine hdf_write_attr_integer_1
+    integer(SIZE_T) :: dims(1)
+    integer(HID_T) :: obj_id, attr_id
+    integer :: hdferror
+
+    write(*,'(A)') "->hdf_read_attr_double_0"
+
+    ! open object
+    if (obj_name == "") then
+       obj_id = loc_id
+    else
+       call h5oopen_f(loc_id, obj_name, obj_id, hdferror)
+    end if
+
+    ! create attribute
+    call h5aopen_f(obj_id, attr_name, attr_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5aclose_f(attr_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    if (obj_name /= "") then
+       call h5oclose_f(obj_id, hdferror)
+    end if
+    
+  end subroutine hdf_read_attr_integer_0
+
+  !  \brief writes a scalar attribute
+  subroutine hdf_read_attr_integer_1(loc_id, obj_name, attr_name, data)
+    
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    integer, intent(out) :: data(:)             ! data to write to attribute
+
+    integer :: rank
+    integer(SIZE_T) :: dims(1)
+    integer(HID_T) :: obj_id, attr_id
+    integer :: hdferror
+
+    write(*,'(A)') "->hdf_read_attr_double_1"
+
+    ! open object
+    if (obj_name == "") then
+       obj_id = loc_id
+    else
+       call h5oopen_f(loc_id, obj_name, obj_id, hdferror)
+    end if
+
+    ! create dataspace
+    rank = 1
+    dims = shape(data, KIND=HID_T)
+
+    ! create attribute
+    call h5aopen_f(obj_id, attr_name, attr_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5aclose_f(attr_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    if (obj_name /= "") then
+       call h5oclose_f(obj_id, hdferror)
+    end if
+    
+  end subroutine hdf_read_attr_integer_1
 
   !  \brief writes a string attribute
   subroutine hdf_read_attr_string(loc_id, obj_name, attr_name, data)
