@@ -25,6 +25,7 @@
 !>  \note I might use H5T_STD_F64BE (or H5T_STD_F64LE) instead of H5T_NATIVE_DOUBLE when
 !>    creating a dataset. This would make the hdf5 file more portable.
 !>
+!>  ::hdf_write_dataset
 module HDF5_utils
   
   use hdf5
@@ -37,10 +38,14 @@ module HDF5_utils
   public :: hdf_write_dataset, hdf_read_dataset
   public :: hdf_write_attribute, hdf_read_attribute
 
-  integer, parameter :: sp = kind(1.0)     !< single precision
-  integer, parameter :: dp = kind(1.0d0)   !< double precision
-  
   !>  \brief generic interface to write a dataset
+  !> 
+  !>  Supported types
+  !>   - integers (scalar and 1d-6d arrays)
+  !>   - doubles (scalar and 1d-6d arrays)
+  !   - reals (scalar and 1d-6d arrays)
+  !   - string (scalar and 1d-6d arrays)
+  !>
   !>  \param[in] loc_d     local id in file
   !>  \param[in] dset_name name of dataset
   !>  \param[in] data      data array to be written
@@ -60,37 +65,15 @@ module HDF5_utils
      module procedure hdf_write_dataset_double_5
      module procedure hdf_write_dataset_double_6
   end interface hdf_write_dataset
-  
-!!$  !>  \brief generic interface to write a dataset of integers
-!!$  !>  \param[in] loc_d     local id in file
-!!$  !>  \param[in] dset_name name of dataset
-!!$  !>  \param[in] data      data array to be written
-!!$  interface hdf_write_dataset_integer
-!!$     module procedure hdf_write_dataset_integer_0
-!!$     module procedure hdf_write_dataset_integer_1
-!!$     module procedure hdf_write_dataset_integer_2
-!!$     module procedure hdf_write_dataset_integer_3
-!!$     module procedure hdf_write_dataset_integer_4
-!!$     module procedure hdf_write_dataset_integer_5
-!!$     module procedure hdf_write_dataset_integer_6
-!!$  end interface hdf_write_dataset_integer
-!!$  
-!!$  !>  \brief generic interface to write a dataset of doubles
-!!$  !>  \param[in] loc_d     local id in file
-!!$  !>  \param[in] dset_name name of dataset
-!!$  !>  \param[in] data      data array to be written
-!!$  interface hdf_write_dataset_double
-!!$     module procedure hdf_write_dataset_double_0
-!!$     module procedure hdf_write_dataset_double_1
-!!$     module procedure hdf_write_dataset_double_2
-!!$     module procedure hdf_write_dataset_double_3
-!!$     module procedure hdf_write_dataset_double_4
-!!$     module procedure hdf_write_dataset_double_5
-!!$     module procedure hdf_write_dataset_double_6
-!!$  end interface hdf_write_dataset_double
 
-
-  !> \brief generic interface to read a dataset of doubles
+  !>  \brief generic interface to read a dataset of doubles
+  !> 
+  !>  Supported types
+  !>   - integers (scalar and 1d-6d arrays)
+  !>   - doubles (scalar and 1d-6d arrays)
+  !   - reals (scalar and 1d-6d arrays)
+  !   - string (scalar and 1d-6d arrays)
+  !>
   !>  \param[in]  loc_d     local id in file
   !>  \param[in]  dset_name name of dataset
   !>  \param[out] data data array to be read
@@ -111,35 +94,14 @@ module HDF5_utils
      module procedure hdf_read_dataset_double_6
   end interface hdf_read_dataset
 
-!!$  !> \brief generic interface to read a dataset of doubles
-!!$  !>  \param[in]  loc_d     local id in file
-!!$  !>  \param[in]  dset_name name of dataset
-!!$  !>  \param[out] data data array to be read
-!!$  interface hdf_read_dataset_integer
-!!$     module procedure hdf_read_dataset_integer_0
-!!$     module procedure hdf_read_dataset_integer_1
-!!$     module procedure hdf_read_dataset_integer_2
-!!$     module procedure hdf_read_dataset_integer_3
-!!$     module procedure hdf_read_dataset_integer_4
-!!$     module procedure hdf_read_dataset_integer_5
-!!$     module procedure hdf_read_dataset_integer_6
-!!$  end interface hdf_read_dataset_integer
-!!$
-!!$  !> \brief generic interface to read a dataset of doubles
-!!$  !>  \param[in]  loc_d     local id in file
-!!$  !>  \param[in]  dset_name name of dataset
-!!$  !>  \param[out] data data array to be read
-!!$  interface hdf_read_dataset_double
-!!$     module procedure hdf_read_dataset_double_0
-!!$     module procedure hdf_read_dataset_double_1
-!!$     module procedure hdf_read_dataset_double_2
-!!$     module procedure hdf_read_dataset_double_3
-!!$     module procedure hdf_read_dataset_double_4
-!!$     module procedure hdf_read_dataset_double_5
-!!$     module procedure hdf_read_dataset_double_6
-!!$  end interface hdf_read_dataset_double
-
   !>  \brief generic interface to write attribute
+  !> 
+  !>  Supported types
+  !>   - integers (scalar and 1d-6d arrays)
+  !>   - doubles (scalar and 1d-6d arrays)
+  !>   - string (scalar)
+  !   - reals (scalar and 1d-6d arrays)
+  !>
   !>  \param[in] loc_id    local id in file
   !>  \param[in] obj_name  name of object to be attached to (if left blank, just use loc_id)
   !>  \param[in] attr_name name of attribute to be added
@@ -152,19 +114,14 @@ module HDF5_utils
      module procedure hdf_write_attr_double_1
   end interface hdf_write_attribute
 
-!!$  !> \brief generic interface to write attribute of integers
-!!$  interface hdf_write_attr_integer
-!!$     module procedure hdf_write_attr_integer_0
-!!$     module procedure hdf_write_attr_integer_1
-!!$  end interface hdf_write_attr_integer
-!!$  
-!!$  !> \brief generic interface to write attribute of doubles
-!!$  interface hdf_write_attr_double
-!!$     module procedure hdf_write_attr_double_0
-!!$     module procedure hdf_write_attr_double_1
-!!$  end interface hdf_write_attr_double
-
   !>  \brief generic interface to read attribute
+  !> 
+  !>  Supported types
+  !>   - integers (scalar and 1d-6d arrays)
+  !>   - doubles (scalar and 1d-6d arrays)
+  !>   - string (scalar and 1d-6d arrays)
+  !   - reals (scalar)
+  !>
   !>  \param[in] loc_id    local id in file
   !>  \param[in] obj_name  name of object to be attached to (if left blank, just use loc_id)
   !>  \param[in] attr_name name of attribute to be added
@@ -174,7 +131,11 @@ module HDF5_utils
      module procedure hdf_read_attr_double_0
      module procedure hdf_read_attr_double_1
   end interface hdf_read_attribute
+
   
+
+  integer, parameter :: sp = kind(1.0)     ! single precision
+  integer, parameter :: dp = kind(1.0d0)   ! double precision
      
 
 contains
@@ -303,12 +264,12 @@ contains
   !!--------------------------------hdf_write_dataset_double--------------------------------
   !!----------------------------------------------------------------------------------------
 
-  !>  \brief writes a scalar to an hdf5 file
+  !  \brief writes a scalar to an hdf5 file
   subroutine hdf_write_dataset_double_0(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data                !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data                ! data to be written
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -339,12 +300,12 @@ contains
 
   end subroutine hdf_write_dataset_double_0
 
-  !>  \brief writes a 1d array to an hdf5 file
+  !  \brief writes a 1d array to an hdf5 file
   subroutine hdf_write_dataset_double_1(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:)             !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:)             ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -377,12 +338,12 @@ contains
 
   end subroutine hdf_write_dataset_double_1
 
-  !>  \brief writes a 2d array to an hdf5 file
+  !  \brief writes a 2d array to an hdf5 file
   subroutine hdf_write_dataset_double_2(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:,:)           !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:,:)           ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -415,12 +376,12 @@ contains
 
   end subroutine hdf_write_dataset_double_2
 
-  !>  \brief writes a 3d array to an hdf5 file
+  !  \brief writes a 3d array to an hdf5 file
   subroutine hdf_write_dataset_double_3(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:,:,:)         !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:,:,:)         ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -453,12 +414,12 @@ contains
 
   end subroutine hdf_write_dataset_double_3
 
-  !>  \brief writes a 4d array to an hdf5 file
+  !  \brief writes a 4d array to an hdf5 file
   subroutine hdf_write_dataset_double_4(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:,:,:,:)       !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:,:,:,:)       ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -491,12 +452,12 @@ contains
 
   end subroutine hdf_write_dataset_double_4
 
-  !>  \brief writes a 5d array to an hdf5 file
+  !  \brief writes a 5d array to an hdf5 file
   subroutine hdf_write_dataset_double_5(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:)     !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:,:,:,:,:)     ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -529,12 +490,12 @@ contains
 
   end subroutine hdf_write_dataset_double_5
 
-  !>  \brief writes a 6d array to an hdf5 file
+  !  \brief writes a 6d array to an hdf5 file
   subroutine hdf_write_dataset_double_6(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:,:)   !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: data(:,:,:,:,:,:)   ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -568,16 +529,17 @@ contains
   end subroutine hdf_write_dataset_double_6
 
 
-!!----------------------------------------------------------------------------------------
+  !!----------------------------------------------------------------------------------------
   !!--------------------------------hdf_write_dataset_double--------------------------------
   !!----------------------------------------------------------------------------------------
 
-  !>  \brief writes a scalar to an hdf5 file
+  
+  !  \brief writes a scalar to an hdf5 file
   subroutine hdf_write_dataset_integer_0(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data                 !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data                 ! data to be written
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -608,12 +570,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_0
 
-  !>  \brief writes a 1d array to an hdf5 file
+  !  \brief writes a 1d array to an hdf5 file
   subroutine hdf_write_dataset_integer_1(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:)              !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:)              ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -646,12 +608,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_1
 
-  !>  \brief writes a 2d array to an hdf5 file
+  !  \brief writes a 2d array to an hdf5 file
   subroutine hdf_write_dataset_integer_2(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:,:)            !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:,:)            ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -684,12 +646,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_2
 
-  !>  \brief writes a 3d array to an hdf5 file
+  !  \brief writes a 3d array to an hdf5 file
   subroutine hdf_write_dataset_integer_3(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:,:,:)          !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:,:,:)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -722,12 +684,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_3
 
-  !>  \brief writes a 4d array to an hdf5 file
+  !  \brief writes a 4d array to an hdf5 file
   subroutine hdf_write_dataset_integer_4(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:,:,:,:)        !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:,:,:,:)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -760,12 +722,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_4
 
-  !>  \brief writes a 5d array to an hdf5 file
+  !  \brief writes a 5d array to an hdf5 file
   subroutine hdf_write_dataset_integer_5(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:,:,:,:,:)      !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:,:,:,:,:)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -798,12 +760,12 @@ contains
 
   end subroutine hdf_write_dataset_integer_5
 
-  !>  \brief writes a 6d array to an hdf5 file
+  !  \brief writes a 6d array to an hdf5 file
   subroutine hdf_write_dataset_integer_6(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(in) :: data(:,:,:,:,:,:)    !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: data(:,:,:,:,:,:)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -842,12 +804,12 @@ contains
   !!---------------------------------------------------------------------------------------
 
 
-  !>  \brief reads a scalar from an hdf5 file
+  !  \brief reads a scalar from an hdf5 file
   subroutine hdf_read_dataset_integer_0(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data                !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data                ! data to be written
 
 
     integer(SIZE_T) :: dims(1)
@@ -873,12 +835,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_0
 
-  !>  \brief reads a 1d array from an hdf5 file
+  !  \brief reads a 1d array from an hdf5 file
   subroutine hdf_read_dataset_integer_1(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:)             !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:)             ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -905,12 +867,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_1
 
-  !>  \brief reads a 2d array from an hdf5 file
+  !  \brief reads a 2d array from an hdf5 file
   subroutine hdf_read_dataset_integer_2(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:,:)           !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:,:)           ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -937,12 +899,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_2
 
-  !>  \brief reads a 3d array from an hdf5 file
+  !  \brief reads a 3d array from an hdf5 file
   subroutine hdf_read_dataset_integer_3(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:,:,:)         !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:,:,:)         ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -969,12 +931,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_3
 
-  !>  \brief reads a 4d array from an hdf5 file
+  !  \brief reads a 4d array from an hdf5 file
   subroutine hdf_read_dataset_integer_4(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:,:,:,:)       !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:,:,:,:)       ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1001,12 +963,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_4
 
-  !>  \brief reads a 5d array from an hdf5 file
+  !  \brief reads a 5d array from an hdf5 file
   subroutine hdf_read_dataset_integer_5(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:,:,:,:,:)     !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:,:,:,:,:)     ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1033,12 +995,12 @@ contains
 
   end subroutine hdf_read_dataset_integer_5
 
-  !>  \brief reads a 6d array from an hdf5 file
+  !  \brief reads a 6d array from an hdf5 file
   subroutine hdf_read_dataset_integer_6(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    integer, intent(out) :: data(:,:,:,:,:,:)   !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(out) :: data(:,:,:,:,:,:)   ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1065,19 +1027,18 @@ contains
 
   end subroutine hdf_read_dataset_integer_6
 
-
   
   !!---------------------------------------------------------------------------------------
   !!--------------------------------hdf_read_dataset_double--------------------------------
   !!---------------------------------------------------------------------------------------
 
 
-  !>  \brief reads a scalar from an hdf5 file
+  !  \brief reads a scalar from an hdf5 file
   subroutine hdf_read_dataset_double_0(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data                 !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data               ! data to be written
 
 
     integer(SIZE_T) :: dims(1)
@@ -1103,12 +1064,12 @@ contains
 
   end subroutine hdf_read_dataset_double_0
 
-  !>  \brief reads a 1d array from an hdf5 file
+  !  \brief reads a 1d array from an hdf5 file
   subroutine hdf_read_dataset_double_1(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:)            !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:)            ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1135,12 +1096,12 @@ contains
 
   end subroutine hdf_read_dataset_double_1
 
-  !>  \brief reads a 2d array from an hdf5 file
+  !  \brief reads a 2d array from an hdf5 file
   subroutine hdf_read_dataset_double_2(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:,:)          !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:,:)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1167,12 +1128,12 @@ contains
 
   end subroutine hdf_read_dataset_double_2
 
-  !>  \brief reads a 3d array from an hdf5 file
+  !  \brief reads a 3d array from an hdf5 file
   subroutine hdf_read_dataset_double_3(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:,:,:)        !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:,:,:)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1199,12 +1160,12 @@ contains
 
   end subroutine hdf_read_dataset_double_3
 
-  !>  \brief reads a 4d array from an hdf5 file
+  !  \brief reads a 4d array from an hdf5 file
   subroutine hdf_read_dataset_double_4(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:,:,:,:)      !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:,:,:,:)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1231,12 +1192,12 @@ contains
 
   end subroutine hdf_read_dataset_double_4
 
-  !>  \brief reads a 5d array from an hdf5 file
+  !  \brief reads a 5d array from an hdf5 file
   subroutine hdf_read_dataset_double_5(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:)    !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:,:,:,:,:)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1263,12 +1224,12 @@ contains
 
   end subroutine hdf_read_dataset_double_5
 
-  !>  \brief reads a 6d array from an hdf5 file
+  !  \brief reads a 6d array from an hdf5 file
   subroutine hdf_read_dataset_double_6(loc_id, dset_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: dset_name   !< name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:,:)  !< data to be written
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(out) :: data(:,:,:,:,:,:)  ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1300,13 +1261,14 @@ contains
   !!---------------------------------------hdf_write_attr*---------------------------------
   !!---------------------------------------------------------------------------------------
 
-  !>  \brief writes a scalar attribute
+  
+  !  \brief writes a scalar attribute
   subroutine hdf_write_attr_double_0(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    real(dp), intent(in) :: data                !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    real(dp), intent(in) :: data                ! data to write to attribute
 
     !integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1346,13 +1308,13 @@ contains
     
   end subroutine hdf_write_attr_double_0
 
-  !>  \brief writes 1d array attribute
+  !  \brief writes 1d array attribute
   subroutine hdf_write_attr_double_1(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    real(dp), intent(in) :: data(:)             !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    real(dp), intent(in) :: data(:)             ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1393,13 +1355,13 @@ contains
     
   end subroutine hdf_write_attr_double_1
 
-  !>  \brief writes a scalar attribute
+  !  \brief writes a scalar attribute
   subroutine hdf_write_attr_integer_0(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    integer, intent(in) :: data                 !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    integer, intent(in) :: data                 ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, aspace_id, attr_id
@@ -1438,13 +1400,13 @@ contains
     
   end subroutine hdf_write_attr_integer_0
 
-  !>  \brief writes 1d array attribute
+  !  \brief writes 1d array attribute
   subroutine hdf_write_attr_integer_1(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    integer, intent(in) :: data(:)              !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    integer, intent(in) :: data(:)              ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1493,15 +1455,14 @@ contains
 !!$  subroutine hdf_write_attr_integer_1()
 !!$  end subroutine hdf_write_attr_integer_1
 
-  !>  \brief writes a string attribute
+  !  \brief writes a string attribute
   subroutine hdf_write_attr_string(loc_id, obj_name, attr_name, data)
   
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    character(len=*), intent(in) :: data        !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    character(len=*), intent(in) :: data        ! data to write to attribute
 
-    !integer :: rank, str_len
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, type_id, aspace_id, attr_id
     integer :: hdferror
@@ -1548,13 +1509,14 @@ contains
   !!-------------------------------------hdf_read_attr-------------------------------------
   !!---------------------------------------------------------------------------------------
 
-  !>  \brief writes a scalar attribute
+  
+  !  \brief writes a scalar attribute
   subroutine hdf_read_attr_double_0(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    real(dp), intent(out) :: data                !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    real(dp), intent(out) :: data               ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, attr_id
@@ -1586,13 +1548,13 @@ contains
     
   end subroutine hdf_read_attr_double_0
 
-  !>  \brief reads 1d array attribute
+  !  \brief reads 1d array attribute
   subroutine hdf_read_attr_double_1(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    real(dp), intent(out) :: data(:)             !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    real(dp), intent(out) :: data(:)            ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1637,15 +1599,14 @@ contains
 !!$  subroutine hdf_write_attr_integer_1()
 !!$  end subroutine hdf_write_attr_integer_1
 
-  !>  \brief writes a string attribute
+  !  \brief writes a string attribute
   subroutine hdf_read_attr_string(loc_id, obj_name, attr_name, data)
 
-    integer(HID_T), intent(in) :: loc_id        !< local id in file
-    character(len=*), intent(in) :: obj_name    !< object name attribute will be attached to (if "" use loc_id)
-    character(len=*), intent(in) :: attr_name   !< name of attribute
-    character(len=*), intent(out) :: data        !< data to write to attribute
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
+    character(len=*), intent(in) :: attr_name   ! name of attribute
+    character(len=*), intent(out) :: data       ! data to write to attribute
 
-    !integer :: rank, str_len
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, type_id, attr_id
     integer :: hdferror
