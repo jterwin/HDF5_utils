@@ -76,14 +76,14 @@ contains
     call hdf_write_dataset(file_id, "data4", data4)
 
     ! write attribute to a dataset
-    call hdf_write_attr(file_id, "data1", "rank", 1.618_dp)
-    call hdf_write_attr(file_id, "data4", "luckynumber", 7)
+    call hdf_write_attribute(file_id, "data1", "rank", 1.618_dp)
+    call hdf_write_attribute(file_id, "data4", "luckynumber", 7)
     
     ! write attribute to the file (and get version from Makefile)
     call date_and_time(DATE=date, TIME=time)
-    call hdf_write_attr(file_id, "", "date/time", date // ": " // time)
+    call hdf_write_attribute(file_id, "", "date/time", date // ": " // time)
 #if defined(VERSION)
-    call hdf_write_attr(file_id, "", "version", VERSION)
+    call hdf_write_attribute(file_id, "", "version", VERSION)
 #endif
 
     !
@@ -93,13 +93,13 @@ contains
     ! relative access
     call hdf_create_group(file_id, "group1")
     call hdf_write_dataset(file_id, "group1/gdata1", data1)
-    call hdf_write_attr(file_id, "group1", "tag", "this is group 1")
+    call hdf_write_attribute(file_id, "group1", "tag", "this is group 1")
 
     ! absolute access
     call hdf_create_group(file_id, "group2")
     call hdf_open_group(file_id, "group2", group_id)
     call hdf_write_dataset(group_id, "gdata2", data2)
-    call hdf_write_attr(group_id, "", "tag", "this is group 2")
+    call hdf_write_attribute(group_id, "", "tag", "this is group 2")
     call hdf_close_group(group_id)
 
     ! close file
@@ -118,11 +118,11 @@ contains
     call hdf_read_dataset(file_id, "data3", data3)
     call hdf_read_dataset(file_id, "data4", data4)
 
-    call hdf_read_attr(file_id, "data1", "rank", data0)
+    call hdf_read_attribute(file_id, "data1", "rank", data0)
     write(*,*) "rank: ", data0
-    call hdf_read_attr(file_id, "", "version", ostring)
+    call hdf_read_attribute(file_id, "", "version", ostring)
     write(*,*) "version: ", ostring
-    call hdf_read_attr(file_id, "", "date/time", ostring)
+    call hdf_read_attribute(file_id, "", "date/time", ostring)
     write(*,*) "date/time: ", ostring
     
     call hdf_close_file(file_id)

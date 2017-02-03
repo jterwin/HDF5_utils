@@ -1,12 +1,3 @@
-!
-!
-!>  \brief real/double precision kinds
-module kinds
-  integer, parameter :: sp = kind(1.0)
-  integer, parameter :: dp = kind(1.0d0)
-end module kinds
-
-
 !>  \brief a set of high level wrapper subroutine for HDF5
 !>
 !>  \par \b Features:
@@ -18,21 +9,37 @@ end module kinds
 !>     - uses generic interfaces to switch on rank and kind
 !>
 !>  \todo
-!>   - reading and writing ( real, character/string)
-!>   - get_rank, get_dim, get_kind
-!>   - get_id
-!>   - check with nested
-!>   - error checking, stop on error?
+!>   - reading and writing ( real, strings )
+!>   - hdf_get_*
+!>     - hdf_get_rank   (h5dget_space_f, h5sget_simple_extent_ndims_f)
+!>     - hdf_get_dim    (h5dget_space_f, h5sget_simple_extent_dims_f)
+!>     - hdf_get_kind   (H5Dget_type)
+!>     - hdf_get_id (not needed)
+!>   - check with nested (seems to work!)
+!>   - error checking, 
+!>     - check dims when reading
+!>     - check dataset/attribute name when reading
+!>     - check group name when reading/writing
+!>     - stop on error vs return error flag vs global error flag
 !>
 !>  \note I might use H5T_STD_F64BE (or H5T_STD_F64LE) instead of H5T_NATIVE_DOUBLE when
 !>    creating a dataset. This would make the hdf5 file more portable.
+!>
 module HDF5_utils
   
-  !use, intrinsic :: iso_fortran_env, only: dp=>real64
-  use kinds
   use hdf5
   implicit none
 
+  private
+  public :: HID_T
+  public :: hdf_open_file, hdf_close_file
+  public :: hdf_create_group, hdf_open_group, hdf_close_group
+  public :: hdf_write_dataset, hdf_read_dataset
+  public :: hdf_write_attribute, hdf_read_attribute
+
+  integer, parameter :: sp = kind(1.0)     !< single precision
+  integer, parameter :: dp = kind(1.0d0)   !< double precision
+  
   !>  \brief generic interface to write a dataset
   !>  \param[in] loc_d     local id in file
   !>  \param[in] dset_name name of dataset
@@ -54,33 +61,33 @@ module HDF5_utils
      module procedure hdf_write_dataset_double_6
   end interface hdf_write_dataset
   
-  !>  \brief generic interface to write a dataset of integers
-  !>  \param[in] loc_d     local id in file
-  !>  \param[in] dset_name name of dataset
-  !>  \param[in] data      data array to be written
-  interface hdf_write_dataset_integer
-     module procedure hdf_write_dataset_integer_0
-     module procedure hdf_write_dataset_integer_1
-     module procedure hdf_write_dataset_integer_2
-     module procedure hdf_write_dataset_integer_3
-     module procedure hdf_write_dataset_integer_4
-     module procedure hdf_write_dataset_integer_5
-     module procedure hdf_write_dataset_integer_6
-  end interface hdf_write_dataset_integer
-  
-  !>  \brief generic interface to write a dataset of doubles
-  !>  \param[in] loc_d     local id in file
-  !>  \param[in] dset_name name of dataset
-  !>  \param[in] data      data array to be written
-  interface hdf_write_dataset_double
-     module procedure hdf_write_dataset_double_0
-     module procedure hdf_write_dataset_double_1
-     module procedure hdf_write_dataset_double_2
-     module procedure hdf_write_dataset_double_3
-     module procedure hdf_write_dataset_double_4
-     module procedure hdf_write_dataset_double_5
-     module procedure hdf_write_dataset_double_6
-  end interface hdf_write_dataset_double
+!!$  !>  \brief generic interface to write a dataset of integers
+!!$  !>  \param[in] loc_d     local id in file
+!!$  !>  \param[in] dset_name name of dataset
+!!$  !>  \param[in] data      data array to be written
+!!$  interface hdf_write_dataset_integer
+!!$     module procedure hdf_write_dataset_integer_0
+!!$     module procedure hdf_write_dataset_integer_1
+!!$     module procedure hdf_write_dataset_integer_2
+!!$     module procedure hdf_write_dataset_integer_3
+!!$     module procedure hdf_write_dataset_integer_4
+!!$     module procedure hdf_write_dataset_integer_5
+!!$     module procedure hdf_write_dataset_integer_6
+!!$  end interface hdf_write_dataset_integer
+!!$  
+!!$  !>  \brief generic interface to write a dataset of doubles
+!!$  !>  \param[in] loc_d     local id in file
+!!$  !>  \param[in] dset_name name of dataset
+!!$  !>  \param[in] data      data array to be written
+!!$  interface hdf_write_dataset_double
+!!$     module procedure hdf_write_dataset_double_0
+!!$     module procedure hdf_write_dataset_double_1
+!!$     module procedure hdf_write_dataset_double_2
+!!$     module procedure hdf_write_dataset_double_3
+!!$     module procedure hdf_write_dataset_double_4
+!!$     module procedure hdf_write_dataset_double_5
+!!$     module procedure hdf_write_dataset_double_6
+!!$  end interface hdf_write_dataset_double
 
 
   !> \brief generic interface to read a dataset of doubles
@@ -104,69 +111,69 @@ module HDF5_utils
      module procedure hdf_read_dataset_double_6
   end interface hdf_read_dataset
 
-  !> \brief generic interface to read a dataset of doubles
-  !>  \param[in]  loc_d     local id in file
-  !>  \param[in]  dset_name name of dataset
-  !>  \param[out] data data array to be read
-  interface hdf_read_dataset_integer
-     module procedure hdf_read_dataset_integer_0
-     module procedure hdf_read_dataset_integer_1
-     module procedure hdf_read_dataset_integer_2
-     module procedure hdf_read_dataset_integer_3
-     module procedure hdf_read_dataset_integer_4
-     module procedure hdf_read_dataset_integer_5
-     module procedure hdf_read_dataset_integer_6
-  end interface hdf_read_dataset_integer
-
-  !> \brief generic interface to read a dataset of doubles
-  !>  \param[in]  loc_d     local id in file
-  !>  \param[in]  dset_name name of dataset
-  !>  \param[out] data data array to be read
-  interface hdf_read_dataset_double
-     module procedure hdf_read_dataset_double_0
-     module procedure hdf_read_dataset_double_1
-     module procedure hdf_read_dataset_double_2
-     module procedure hdf_read_dataset_double_3
-     module procedure hdf_read_dataset_double_4
-     module procedure hdf_read_dataset_double_5
-     module procedure hdf_read_dataset_double_6
-  end interface hdf_read_dataset_double
+!!$  !> \brief generic interface to read a dataset of doubles
+!!$  !>  \param[in]  loc_d     local id in file
+!!$  !>  \param[in]  dset_name name of dataset
+!!$  !>  \param[out] data data array to be read
+!!$  interface hdf_read_dataset_integer
+!!$     module procedure hdf_read_dataset_integer_0
+!!$     module procedure hdf_read_dataset_integer_1
+!!$     module procedure hdf_read_dataset_integer_2
+!!$     module procedure hdf_read_dataset_integer_3
+!!$     module procedure hdf_read_dataset_integer_4
+!!$     module procedure hdf_read_dataset_integer_5
+!!$     module procedure hdf_read_dataset_integer_6
+!!$  end interface hdf_read_dataset_integer
+!!$
+!!$  !> \brief generic interface to read a dataset of doubles
+!!$  !>  \param[in]  loc_d     local id in file
+!!$  !>  \param[in]  dset_name name of dataset
+!!$  !>  \param[out] data data array to be read
+!!$  interface hdf_read_dataset_double
+!!$     module procedure hdf_read_dataset_double_0
+!!$     module procedure hdf_read_dataset_double_1
+!!$     module procedure hdf_read_dataset_double_2
+!!$     module procedure hdf_read_dataset_double_3
+!!$     module procedure hdf_read_dataset_double_4
+!!$     module procedure hdf_read_dataset_double_5
+!!$     module procedure hdf_read_dataset_double_6
+!!$  end interface hdf_read_dataset_double
 
   !>  \brief generic interface to write attribute
   !>  \param[in] loc_id    local id in file
   !>  \param[in] obj_name  name of object to be attached to (if left blank, just use loc_id)
   !>  \param[in] attr_name name of attribute to be added
   !>  \param[in] data      attribute data to be written
-  interface hdf_write_attr
+  interface hdf_write_attribute
      module procedure hdf_write_attr_string
      module procedure hdf_write_attr_integer_0
      module procedure hdf_write_attr_integer_1
      module procedure hdf_write_attr_double_0
      module procedure hdf_write_attr_double_1
-  end interface hdf_write_attr
+  end interface hdf_write_attribute
 
-  !> \brief generic interface to write attribute of integers
-  interface hdf_write_attr_integer
-     module procedure hdf_write_attr_integer_0
-     module procedure hdf_write_attr_integer_1
-  end interface hdf_write_attr_integer
-  
-  !> \brief generic interface to write attribute of doubles
-  interface hdf_write_attr_double
-     module procedure hdf_write_attr_double_0
-     module procedure hdf_write_attr_double_1
-  end interface hdf_write_attr_double
+!!$  !> \brief generic interface to write attribute of integers
+!!$  interface hdf_write_attr_integer
+!!$     module procedure hdf_write_attr_integer_0
+!!$     module procedure hdf_write_attr_integer_1
+!!$  end interface hdf_write_attr_integer
+!!$  
+!!$  !> \brief generic interface to write attribute of doubles
+!!$  interface hdf_write_attr_double
+!!$     module procedure hdf_write_attr_double_0
+!!$     module procedure hdf_write_attr_double_1
+!!$  end interface hdf_write_attr_double
 
   !>  \brief generic interface to read attribute
   !>  \param[in] loc_id    local id in file
   !>  \param[in] obj_name  name of object to be attached to (if left blank, just use loc_id)
   !>  \param[in] attr_name name of attribute to be added
   !>  \param[in] data      attribute data to be written
-  interface hdf_read_attr
+  interface hdf_read_attribute
      module procedure hdf_read_attr_string
      module procedure hdf_read_attr_double_0
      module procedure hdf_read_attr_double_1
-  end interface hdf_read_attr
+  end interface hdf_read_attribute
   
      
 
@@ -1643,7 +1650,7 @@ contains
     integer(HID_T) :: obj_id, type_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_string"
+    write(*,'(A)') "->hdf_read_attr_string"
 
     ! open object
     if (obj_name == "") then
