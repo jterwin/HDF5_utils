@@ -25,7 +25,6 @@
 !>  \note I might use H5T_STD_F64BE (or H5T_STD_F64LE) instead of H5T_NATIVE_DOUBLE when
 !>    creating a dataset. This would make the hdf5 file more portable.
 !>
-!>  ::hdf_write_dataset
 module HDF5_utils
   
   use hdf5
