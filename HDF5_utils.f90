@@ -161,17 +161,18 @@ contains
   
   !>  \brief Check if location exists.
   !>
-  !>  Also checks is intemediate paths exists
-  subroutine hdf_exists(loc_id, obj_name, exists)
+  !>  Also checks is intemediate paths exists in a safe way.
+  function hdf_exists(loc_id, obj_name) result(exists)
 
     integer(HID_T), intent(in) :: loc_id       !< local id
     character(len=*), intent(in) :: obj_name   !< relative path to object
-    logical, intent(out) :: exists             !< .TRUE. if everything exists, .FALSE. otherwise
+    
+    logical :: exists  !< .TRUE. if everything exists, .FALSE. otherwise
     
     integer :: hdferror, pos, cpos, str_len
     
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_exists: " // obj_name
+       write(*,'(A,A)') "->hdf_exists: " // obj_name
     end if
     
     ! check intermediate paths (subgroups)
@@ -193,7 +194,10 @@ contains
 
        ! return if intermediate path fails
        if (exists .eqv. .false.) then
-          !write(*,'(A,A,A)') " subpath '", obj_name(1:cpos-1), "' does not exist, return false"
+          if (hdf_print_messages) then
+             write(*,'(A,A,A)') "--->hdf_exists: subpath '", obj_name(1:cpos-1), "' does not exist, return false"
+          end if
+          exists = .false.
           return
        end if
        
@@ -204,14 +208,18 @@ contains
        call h5lexists_f(loc_id, obj_name, exists, hdferror)
        !write(*,*) obj_name, exists
        if (exists .eqv. .false.) then
-          !write(*,'(A,A,A)') " object '", obj_name, "' does not exist, return false"
+          if (hdf_print_messages) then
+             write(*,'(A,A,A)') "--->hdf_exists: object '", obj_name, "' does not exist, return false"
+          end if
+          exists = .false.
           return
        end if
     end if
 
+    exists = .true.
     return
 
-  end subroutine hdf_exists
+  end function hdf_exists
 
   
   !>  \brief Opens file and return identifier
@@ -326,13 +334,22 @@ contains
     integer(HID_T), intent(out) :: group_id      !< id for the group
     
     integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_open_group: " // trim(group_name)
-    end if
     
-    call h5gopen_f(loc_id, group_name, group_id, hdferror)
-    !write(*,'(A20,I0)') "h5gcreate: ", hdferror
+    if (hdf_print_messages) then
+       write(*,'(A,A,A)') "->hdf_open_group: '" // trim(group_name) // "'"
+    end if
+       
+    if (hdf_exists(loc_id, group_name)) then
+       if (hdf_print_messages) then
+          write(*,'(A,A,A)') "->hdf_open_group: opening group '" // trim(group_name) // "'"
+       end if
+       call h5gopen_f(loc_id, group_name, group_id, hdferror)
+    else
+       if (hdf_print_messages) then
+          write(*,'(A,A,A)') "->hdf_open_group: group '" // trim(group_name) // "' does not exist, return with error"
+       end if
+       hdferror = -1
+    end if
     
   end subroutine hdf_open_group
 
