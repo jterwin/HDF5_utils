@@ -3,6 +3,7 @@
 !>  \par \b Features:
 !>   - opening and closing files
 !>   - creating/opening/closing groups
+!>   - get rank and dimensions of dataset
 !>   - reading and writing dataset (integer, double)
 !>     - uses a generic interface to switch on rank and kind
 !>   - writing/reading attributes (integer, double, string)
@@ -10,12 +11,12 @@
 !>
 !>  \todo
 !>   - reading and writing ( real, strings )
+!>   - hdf_exists  (h5o_exist_by_name or h5l_exists)
 !>   - hdf_get_*
-!>     - hdf_get_rank   (h5dget_space_f, h5sget_simple_extent_ndims_f)
-!>     - hdf_get_dim    (h5dget_space_f, h5sget_simple_extent_dims_f)
-!>     - hdf_get_kind   (H5Dget_type)
-!>     - hdf_get_id (not needed)
-!>   - check with nested (seems to work!)
+!>     - hdf_get_obj_name  (h5iget_name_f)
+!>     - hdf_get_obj_type  (h5iget_type_f)
+!>     - hdf_get_dset_type   (H5Dget_type)
+!>     - hdf_get_obj_id (not needed)
 !>   - error checking, 
 !>     - check dims when reading
 !>     - check dataset/attribute name when reading
@@ -32,6 +33,7 @@ module HDF5_utils
 
   private
   public :: HID_T
+  public :: hdf_set_print_messages, hdf_exists
   public :: hdf_open_file, hdf_close_file
   public :: hdf_create_group, hdf_open_group, hdf_close_group
   public :: hdf_get_rank, hdf_get_dims
@@ -107,11 +109,11 @@ module HDF5_utils
   !>  \param[in] attr_name name of attribute to be added
   !>  \param[in] data      attribute data to be written
   interface hdf_write_attribute
-     module procedure hdf_write_attr_string
      module procedure hdf_write_attr_integer_0
      module procedure hdf_write_attr_integer_1
      module procedure hdf_write_attr_double_0
      module procedure hdf_write_attr_double_1
+     module procedure hdf_write_attr_string
   end interface hdf_write_attribute
 
   !>  \brief Generic interface to read attribute
@@ -127,20 +129,89 @@ module HDF5_utils
   !>  \param[in] attr_name name of attribute to be added
   !>  \param[in] data      attribute data to be written
   interface hdf_read_attribute
-     module procedure hdf_read_attr_string
      module procedure hdf_read_attr_integer_0
      module procedure hdf_read_attr_integer_1
      module procedure hdf_read_attr_double_0
      module procedure hdf_read_attr_double_1
+     module procedure hdf_read_attr_string
   end interface hdf_read_attribute
 
-  
-
+  ! precision for this file
   integer, parameter :: sp = kind(1.0)     ! single precision
   integer, parameter :: dp = kind(1.0d0)   ! double precision
-     
 
+  !
+  logical :: hdf_print_messages = .false.
+  
 contains
+
+  !>  \brief Sets the value of hdf_print_messages
+  !>
+  !>  By default, hdf_print_messages = .false. By setting it
+  !>  to .true., some messages are printed detailing what hdf_utils
+  !>  is doing.
+  subroutine hdf_set_print_messages(val_print_messages)
+
+    logical, intent(in) :: val_print_messages  !<  new value for hdf_print_messages
+
+    hdf_print_messages = val_print_messages
+
+  end subroutine hdf_set_print_messages
+  
+  
+  !>  \brief Check if location exists.
+  !>
+  !>  Also checks is intemediate paths exists
+  subroutine hdf_exists(loc_id, obj_name, exists)
+
+    integer(HID_T), intent(in) :: loc_id       !< local id
+    character(len=*), intent(in) :: obj_name   !< relative path to object
+    logical, intent(out) :: exists             !< .TRUE. if everything exists, .FALSE. otherwise
+    
+    integer :: hdferror, pos, cpos, str_len
+    
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_exists: " // obj_name
+    end if
+    
+    ! check intermediate paths (subgroups)
+    str_len = len_trim(obj_name)
+    cpos = 0
+    do
+       !start = cpos + 1
+       !write(*,*) start, str_len, obj_name(start:str_len)
+       
+       pos = index(obj_name(cpos+1:str_len), "/")
+
+       ! no subgroup found
+       if (pos == 0) exit
+
+       ! check subgroup
+       cpos = cpos + pos
+       call h5lexists_f(loc_id, obj_name(1:cpos-1), exists, hdferror)
+       !write(*,*) obj_name(1:cpos-1), exists
+
+       ! return if intermediate path fails
+       if (exists .eqv. .false.) then
+          !write(*,'(A,A,A)') " subpath '", obj_name(1:cpos-1), "' does not exist, return false"
+          return
+       end if
+       
+    end do
+
+    ! check object (unless obj_name ended with "/"
+    if (cpos /= str_len) then
+       call h5lexists_f(loc_id, obj_name, exists, hdferror)
+       !write(*,*) obj_name, exists
+       if (exists .eqv. .false.) then
+          !write(*,'(A,A,A)') " object '", obj_name, "' does not exist, return false"
+          return
+       end if
+    end if
+
+    return
+
+  end subroutine hdf_exists
 
   
   !>  \brief Opens file and return identifier
@@ -166,8 +237,10 @@ contains
 
     integer :: hdferror
     character(len=16) :: status2, action2
-    
-    write(*,'(A)') "->hdf_open_file"
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_open_file: " // trim(filename)
+    end if
     
     ! open hdf5 interface
     call h5open_f(hdferror)
@@ -192,6 +265,7 @@ contains
     elseif (status2 == 'NEW') then
        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, hdferror)
     elseif (status2 == 'REPLACE') then
+       call system("rm -f " // filename)
        call h5fcreate_f(filename, H5F_ACC_EXCL_F, file_id, hdferror)
     else
        write(*,*) "hdf_open: status = ", status2, " not supported." 
@@ -210,8 +284,10 @@ contains
 
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_close_file"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_close_file"
+    end if
+    
     call h5fclose_f(file_id, hdferror)
     !write(*,'(A20,I0)') "h5fclose: ", hdferror
 
@@ -229,8 +305,10 @@ contains
     integer(HID_T) :: grp_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_create_group"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_create_group: " // trim(group_name)
+    end if
+    
     call h5gcreate_f(loc_id, group_name, grp_id, hdferror)
     !write(*,'(A20,I0)') "h5gcreate: ", hdferror
 
@@ -249,8 +327,10 @@ contains
     
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_open_group"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_open_group: " // trim(group_name)
+    end if
+    
     call h5gopen_f(loc_id, group_name, group_id, hdferror)
     !write(*,'(A20,I0)') "h5gcreate: ", hdferror
     
@@ -264,8 +344,10 @@ contains
     
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_close_group"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_close_group"
+    end if
+    
     call h5gclose_f(group_id, hdferror)
     !write(*,'(A20,I0)') "h5gclose: ", hdferror
     
@@ -282,6 +364,10 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_get_rank"
+    end if
+    
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
 
@@ -310,6 +396,10 @@ contains
     integer(HSIZE_T) :: dset_dims(6), max_dims(6)
     integer :: hdferror
 
+    if (hdf_print_messages) then
+       write(*,'(A)') "->hdf_get_dims"
+    end if
+    
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
 
@@ -347,8 +437,10 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_0"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
+    end if
+    
     ! set rank and dims
     dims = (/ 0 /)
 
@@ -384,8 +476,10 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_1"
-
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_1: " // trim(dset_name)
+    end if
+    
     ! set rank and dims
     rank = 1
     dims = shape(data, KIND=HID_T)
@@ -422,7 +516,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_2"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_2: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 2
@@ -460,7 +556,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_3"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_3: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 3
@@ -498,7 +596,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_4: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 4
@@ -536,7 +636,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_5: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 5
@@ -574,7 +676,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_double_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_6: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 6
@@ -617,7 +721,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_0: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     dims = (/ 0 /)
@@ -654,7 +760,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_1: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 1
@@ -692,7 +800,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_2"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_2: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 2
@@ -730,7 +840,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_3"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_3: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 3
@@ -768,7 +880,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_4: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 4
@@ -806,7 +920,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_5"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_5: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 5
@@ -844,7 +960,9 @@ contains
     integer(HID_T) :: dset_id, dspace_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_dataset_integer_6"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_integer_6: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 6
@@ -888,7 +1006,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_0: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     dims = (/ 0 /)
@@ -919,7 +1039,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_1: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 1
@@ -951,7 +1073,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_2"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_2: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 2
@@ -983,7 +1107,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_3"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_3: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 3
@@ -1015,7 +1141,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_4: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 4
@@ -1047,7 +1175,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_5"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_5: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 5
@@ -1079,7 +1209,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_integer_6"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_integer_6: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 6
@@ -1117,7 +1249,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_0: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     dims = (/ 0 /)
@@ -1148,7 +1282,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 1
@@ -1180,7 +1316,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_2"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 2
@@ -1212,7 +1350,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_3"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_3: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 3
@@ -1244,7 +1384,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_4"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_4: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 4
@@ -1276,7 +1418,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_5"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_5: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 5
@@ -1308,7 +1452,9 @@ contains
     integer(HID_T) :: dset_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_dataset_double_6"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_dataset_double_6: " // trim(dset_name)
+    end if
 
     ! set rank and dims
     rank = 6
@@ -1347,7 +1493,9 @@ contains
     integer(HID_T) :: obj_id, aspace_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_double_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1393,7 +1541,9 @@ contains
     integer(HID_T) :: obj_id, aspace_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_double_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1439,7 +1589,9 @@ contains
     integer(HID_T) :: obj_id, aspace_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_integer_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_attr_integer_0: " // trim(obj_name) // "/" // trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1485,7 +1637,9 @@ contains
     integer(HID_T) :: obj_id, aspace_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_integer_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1519,14 +1673,6 @@ contains
     
   end subroutine hdf_write_attr_integer_1
 
-!!$  !>  \brief writes a scalar attribute
-!!$  subroutine hdf_write_attr_integer_0()
-!!$  end subroutine hdf_write_attr_integer_0
-
-!!$  !>  \brief writes a scalar attribute
-!!$  subroutine hdf_write_attr_integer_1()
-!!$  end subroutine hdf_write_attr_integer_1
-
   !  \brief writes a string attribute
   subroutine hdf_write_attr_string(loc_id, obj_name, attr_name, data)
   
@@ -1539,7 +1685,9 @@ contains
     integer(HID_T) :: obj_id, type_id, aspace_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_write_attr_string"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1594,7 +1742,9 @@ contains
     integer(HID_T) :: obj_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_attr_double_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1633,7 +1783,9 @@ contains
     integer(HID_T) :: obj_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_attr_double_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1675,7 +1827,9 @@ contains
     integer(HID_T) :: obj_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_attr_double_0"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_attr_integer_0: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1714,7 +1868,9 @@ contains
     integer(HID_T) :: obj_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_attr_double_1"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then
@@ -1756,7 +1912,9 @@ contains
     integer(HID_T) :: obj_id, type_id, attr_id
     integer :: hdferror
 
-    write(*,'(A)') "->hdf_read_attr_string"
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_read_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
+    end if
 
     ! open object
     if (obj_name == "") then

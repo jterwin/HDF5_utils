@@ -66,6 +66,8 @@ contains
     !
     ! the basics
     !
+
+    !call hdf_set_print_messages(.true.)
     
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='NEW')
