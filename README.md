@@ -1,31 +1,24 @@
 # HDF5_utils
 
-This library is to provide a high level interface into
-[HDF5](https://support.hdfgroup.org/HDF5/). This is, of course, based
-off HDF5's own High-Level module
-([HDLT](https://support.hdfgroup.org/HDF5/doc/HL/RM_H5LT.html)) but
-customized to my own needs.
+This library is to provide a high level interface into [HDF5](https://support.hdfgroup.org/HDF5/).
+This is, of course, based off HDF5's own High-Level module ([HDLT](https://support.hdfgroup.org/HDF5/doc/HL/RM_H5LT.html)) but customized to my own needs.
 
 The aim of this library is to:
  - Abstract most of the HDF5 tyes.
  - Read/write datasets of multiple types and ranks.
    - Assumed reading/writing full arrays.
-   - Remove need to pass dimensions (allocation and consistency of
-    dimensions is left to the user). 
+   - Remove need to pass dimensions (allocation and consistency of dimensions is left to the user). 
  - Write/read attributes to file/group/datasets.
- - Provide the ability to create groups, and access datasets by either
- absolute or relative path.
+ - Provide the ability to create groups, and access datasets by either absolute or relative path.
  - Some auxiliary functions:
    - Check if dataset/object exists.
-   - Get rank and size of dataset, either to check dimensions or to
-     allocate array before reading.
+   - Get rank and size of dataset, either to check dimensions or to allocate array before reading.
 
 ## Module summary
 
-This is just a short summary to provide a basic understandig of the
-module. For a more detailed explaination, look at the code
-comments. If you have doxygen installed, `make docs` will produce an
-html output in `docs/html/index.html`.
+This is just a short summary to provide a basic understandig of the module.
+For a more detailed explaination, look at the code comments.
+If you have doxygen installed, `make docs` will produce an html output in `docs/html/index.html`.
 
 subroutine   | inputs   | description 
 :---- |  :---- |  :----
@@ -54,20 +47,20 @@ subroutine   | inputs   | description
 Here is a simple example of writing to a new HDF5 file:
 
 ```fortran
-	use hdf5_utils
-	
-	integer(HID_T) :: file_id
-	
-	integer :: data0 = 12
-	integer :: data2(2,4)
-	real(dp) :: data3(4,6,8)
-	
-	!
+    use hdf5_utils
+    
+    integer(HID_T) :: file_id
+    
+    integer :: data0 = 12
+    integer :: data2(2,4)
+    real(dp) :: data3(4,6,8)
+    
+    !
     call hdf_set_print_messages(.true.)
-	
+    
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='NEW')
-
+    
     ! write out some datasets
     call hdf_write_dataset(file_id, "data0", data0)
     call hdf_write_dataset(file_id, "data1", data1)
@@ -80,21 +73,19 @@ Here is a simple example of writing to a new HDF5 file:
 
 ```
 
-The rank, dimension, and datatypes of the datasets in the HDF5 file
-correspond to the arrays passed to it.
-
+The rank, dimension, and datatypes of the datasets in the HDF5 file correspond to the arrays passed to it.
 
 Here is a simple examle of reading from an HDF5 file:
 
 ```fortran
-	use hdf5_utils
-	
-	integer(HID_T) :: file_id
-	
-	integer :: data0 = 12
-	integer :: data2(2,4)
-	real(dp) :: data3(4,6,8)
-	
+    use hdf5_utils
+    
+    integer(HID_T) :: file_id
+    
+    integer :: data0 = 12
+    integer :: data2(2,4)
+    real(dp) :: data3(4,6,8)
+    
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
 
@@ -110,15 +101,12 @@ Here is a simple examle of reading from an HDF5 file:
 
 ```
 
-The rank, dimension, and datatypes array should match that of the
-datasets in the HDF5 file, otherwise the HDF5 library will bring up
-and error.
+The rank, dimension, and datatypes array should match that of the datasets in the HDF5 file, otherwise the HDF5 library will bring up and error.
 
 ### Using Attributes
 
-Attribute are just like data sets, but they can be attached to
-datasets, group, or the file root. The suggested use is for small
-items like the code version or run parameters:
+Attribute are just like data sets, but they can be attached to datasets, group, or the file root.
+The suggested use is for small items like the code version or run parameters:
 
 ```fortran
     use hdf5_utils
@@ -139,16 +127,15 @@ items like the code version or run parameters:
     
 ```
 
-The rank, dimension, and datatypes of the attribute in the HDF5 file
-correspond to the arrays passed to it. Further, there is the
-`hdf5_utils::hdf_read_attribute` subroutine.
+The rank, dimension, and datatypes of the attribute in the HDF5 file correspond to the arrays passed to it.
+Further, there is the `hdf5_utils::hdf_read_attribute` subroutine.
 
 
 ### Using Groups
 
-Groups are a nice way to organize datasets and attributes within the
-HDF5 file. They work like directories/folder on a computer. When using
-group, you can access their contents using absolute or relative paths.
+Groups are a nice way to organize datasets and attributes within the HDF5 file.
+They work like directories/folder on a computer.
+When using group, you can access their contents using absolute or relative paths.
 
 ```fortran
     use hdf5_utils
@@ -177,9 +164,8 @@ group, you can access their contents using absolute or relative paths.
     
 ```
 
-Notice in the relative path case, we can pass the `group_id` to
-read/write subroutines instead of the `file_id`. This can be used for
-convenient access to nested objects.
+Notice in the relative path case, we can pass the `group_id` to read/write subroutines instead of the `file_id`.
+This can be used for convenient access to nested objects.
 
 
 ### Unkown size
@@ -218,6 +204,7 @@ These can be use, for example, to allocate an array before reading in the data
 ### Writing/reading by column
 
 It is sometimes convenient to write/read only single column of a multidimensional array.
+
 > **NOTE:** FORTRAN is a column oriented programming language.
 > This means that elements of each column is stored contiguously in memory,
 > and therefore has fastest access.
@@ -228,8 +215,8 @@ It is sometimes convenient to write/read only single column of a multidimensiona
 > as a column vector in FORTRAN.
 > Keep this in mind if you read access this data in another language,
 > like C or Python.
-For instance, if a 2d array is a set of data vectors that we wish to perform a long operation on,
-then we can read in one vector at a time and treat it before moving onto the next one.
+
+For instance, if a 2d array is a set of data vectors that we wish to perform a long operation on, then we can read in one vector at a time and treat it before moving onto the next one.
 
 ```fortran
     use hdf5_utils
