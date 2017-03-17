@@ -2,6 +2,7 @@ program hdf5_test
 
   !use, intrinsic :: iso_fortran_env, dp=>real64
   use kinds
+  use hdf5_utils, only: hdf_set_print_messages
   implicit none
   
   integer :: ii, jj, kk, ll
@@ -42,36 +43,37 @@ program hdf5_test
   !call hdf5_types()
   !call test_low_level()
 
-  call test_high_level()
+  !call test_high_level()
+
+  !
+  call hdf_set_print_messages(.true.)
+
+  call test_hl_write_dataset()
+
+  call test_hl_read_dataset()
+
+  call test_hl_attributes()
+
+  call test_hl_groups()
+
+  call test_hl_unkownsize()
+
+  call test_hl_bycolumn()
 
 contains
 
- 
-  !>  \brief write to an hdf5 file using the low level subroutines
-  subroutine test_high_level()
+  !
+  ! the basics
+  !
+  subroutine test_hl_write_dataset()
 
     use hdf5_utils
 
-    integer(HID_T) :: file_id, group_id
+    integer(HID_T) :: file_id
 
-    character(len=8) :: date
-    character(len=10) :: time
-    character(len=32) :: ostring
+    write(*,'(A)') ""
+    write(*,'(A)') "Test writing dataset"
 
-    integer :: rank, dims(6)
-    integer, allocatable :: test4(:,:,:,:)
-
-    real(dp) :: array(4)
-    
-    write(*,'(A)') "test_high_level"
-
-    !
-    ! the basics
-    !
-
-    !
-    call hdf_set_print_messages(.true.)
-    
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='NEW')
 
@@ -85,11 +87,21 @@ contains
     ! close file
     call hdf_close_file(file_id)
 
+  end subroutine test_hl_write_dataset
+
+  
+  !    
+  ! test reading
+  !
+  subroutine test_hl_read_dataset()
+
+    use hdf5_utils
     
-    !    
-    ! test reading
-    !
-    
+    integer(HID_T) :: file_id
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test reading dataset"
+
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
 
@@ -103,11 +115,24 @@ contains
     ! close file
     call hdf_close_file(file_id)
 
+  end subroutine test_hl_read_dataset
 
-    !
-    ! use attribute
-    !
+  
+  !
+  ! use attribute
+  !
+  subroutine test_hl_attributes()
+    
+    use hdf5_utils
 
+    integer(HID_T) :: file_id
+
+    character(len=8) :: date
+    character(len=10) :: time
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test writing attributes"
+    
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READWRITE')
 
@@ -125,11 +150,20 @@ contains
     ! close file
     call hdf_close_file(file_id)
     
-    
-    !
-    ! use groups
-    !
+  end subroutine test_hl_attributes
 
+      
+
+  !>  \brief Test using groups
+  subroutine test_hl_groups()
+
+    use hdf5_utils
+
+    integer(HID_T) :: file_id, group_id
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test using groups"
+    
     ! open file
     call hdf_open_file(file_id, "test_groups.h5", STATUS='NEW')
 
@@ -150,35 +184,22 @@ contains
     ! close file
     call hdf_close_file(file_id)
 
+  end subroutine test_hl_groups
 
+
+  !>  \brief Test using hdf_get_rank and hdf_get_dims to allocate an array for hdf_read_dataset
+  subroutine test_hl_unkownsize()
     
-    !
-    ! test reading full
-    !
+    use hdf5_utils
+
+    integer(HID_T) :: file_id
+
+    integer :: rank, dims(6)
+    integer, allocatable :: test4(:,:,:,:)
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test using groups"
     
-    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
-    
-    call hdf_read_dataset(file_id, "data0", data0)
-    call hdf_read_dataset(file_id, "data1", data1)
-    call hdf_read_dataset(file_id, "data2", data2)
-    call hdf_read_dataset(file_id, "data3", data3)
-    call hdf_read_dataset(file_id, "data4", data4)
-
-    call hdf_read_attribute(file_id, "data1", "rank", data0)
-    write(*,*) "rank: ", data0
-    call hdf_read_attribute(file_id, "", "version", ostring)
-    write(*,*) "version: ", ostring
-    call hdf_read_attribute(file_id, "", "date/time", ostring)
-    write(*,*) "date/time: ", ostring
-
-    ! close file
-    call hdf_close_file(file_id)
-
-
-    !
-    ! reading an unkown size
-    !
-
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
 
@@ -197,30 +218,45 @@ contains
     ! close file
     call hdf_close_file(file_id)
 
+  end subroutine test_hl_unkownsize
 
+  
+  !>  \brief write out by column
+  subroutine test_hl_bycolumn()
 
+    use hdf5_utils
 
-    !
-    ! writing by column
-    !
+    integer(HID_T) :: file_id
 
+    integer :: j, k
+    real(dp) :: array(4)
+    
+    write(*,'(A)') ""
+    write(*,'(A)') "Test writing out by column"
+    
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='WRITE')
 
     ! create dataset
     call hdf_create_dataset(file_id, "vdata3", (/4,6,8/), "double")
 
-    array = 1.0_dp
+    ! loop through array
+    do j = 1, 6
+       do k = 1, 8
+          array = real(j+k-1, dp)
+          call hdf_write_vector_to_dataset(file_id, "vdata3", (/ j, k /), array)
+       end do
+    end do
 
-    call hdf_write_vector_to_dataset(file_id, "vdata3", (/ 1, 2 /), array)
-
+    call hdf_read_vector_from_dataset(file_id, "data3", (/1,1/), array)
+    write(*,*) array
     
     ! close file
     call hdf_close_file(file_id)
-    
-  end subroutine test_high_level
 
-
+  end subroutine test_hl_bycolumn
+  
+  
   !>  \brief write out some H5T types for reference
   subroutine hdf5_types()
     use hdf5

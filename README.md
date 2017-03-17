@@ -29,26 +29,29 @@ html output in `docs/html/index.html`.
 
 subroutine   | inputs   | description 
 :---- |  :---- |  :----
-`hdf_write_dataset` | `loc_id`, `dset_name`, `data` | write out array (or scalar) 
-`hdf_read_dataset` | `loc_id`, `dset_name`, `data` | read in array (or scalar) 
-`hdf_write_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | write out attribute array (or scalar) 
-`hdf_read_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | read in attribute array (or scalar)
 `hdf_open_file` | `file_id`, `filename`, `STATUS`, `ACTION` | Opens file and return identifier
 `hdf_close_file` | `file_id` | Closes a hdf5 file
+`hdf_write_dataset` | `loc_id`, `dset_name`, `data` | write out array (or scalar)
+`hdf_read_dataset` | `loc_id`, `dset_name`, `data` | read in array (or scalar)
+`hdf_create_dataset` | `loc_id`, `dset_name`, `dset_dims`, `dset_type` | creates an empty dataset
+`hdf_write_vector_to_dataset` | `loc_id`, `dset_name`, `offset`, `vector` | write a vecotr to leading edge of dataset
+`hdf_read_vector_from_dataset` | `loc_id`, `dset_name`, `offset`, `vector` | read a 1d array from from leading edge of dataset
+`hdf_write_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | write out attribute array (or scalar)
+`hdf_read_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | read in attribute array (or scalar)
 `hdf_create_group` | `loc_id`, `group_name` | Create a new group
-`hdf_open_group` | `loc_id`, `group_name`, `group_id` | Opens a group and returns the identifier.
-`hdf_close_group` | `group_id` | Close a group by identifier.
-`hdf_get_rank` | `loc_id`, `dset_name`, `rank` | Get the rank of a dataset. 
+`hdf_open_group` | `loc_id`, `group_name`, `group_id` | Opens a group and returns the identifier
+`hdf_close_group` | `group_id` | Close a group by identifier
+`hdf_get_rank` | `loc_id`, `dset_name`, `rank` | Get the rank of a dataset
 `hdf_get_dims` | `loc_id`, `dset_name`, `dims` | get the dimensions of a dataset
-`hdf_set_print_messages` | `val_print_messages` | Sets the value of `hdf_print_messages`.
-`hdf_exists` | `loc_id`, `obj_name` | Check if location exists. 
+`hdf_exists` | `loc_id`, `obj_name` | Check if location exists
+`hdf_set_print_messages` | `val_print_messages` | Sets the value of `hdf_print_messages`
 
 ## Examples
 
 
 ### The Basics
 
-Here is a simple examle of writing to a new HDF5 file
+Here is a simple example of writing to a new HDF5 file:
 
 ```fortran
 	use hdf5_utils
@@ -81,7 +84,7 @@ The rank, dimension, and datatypes of the datasets in the HDF5 file
 correspond to the arrays passed to it.
 
 
-Here is a simple examle of reading from an HDF5 file
+Here is a simple examle of reading from an HDF5 file:
 
 ```fortran
 	use hdf5_utils
@@ -115,7 +118,7 @@ and error.
 
 Attribute are just like data sets, but they can be attached to
 datasets, group, or the file root. The suggested use is for small
-items like the code version or run parameters.
+items like the code version or run parameters:
 
 ```fortran
     use hdf5_utils
@@ -138,7 +141,7 @@ items like the code version or run parameters.
 
 The rank, dimension, and datatypes of the attribute in the HDF5 file
 correspond to the arrays passed to it. Further, there is the
-`hdf_read_attribute` subroutine.
+`hdf5_utils::hdf_read_attribute` subroutine.
 
 
 ### Using Groups
@@ -181,10 +184,8 @@ convenient access to nested objects.
 
 ### Unkown size
 
-There are two subroutine, `hdf_get_rank` and `hdf_get_dims`, to get
-the rank (tensor rank, number of dimensions) of a dataset and the
-dimensions  of a dataset. These can be use, for example, to allocate
-an array before reading in the data
+There are two subroutine, `hdf_get_rank` and `hdf_get_dims`, to get the rank (tensor rank, number of dimensions) of a dataset and the dimensions  of a dataset.
+These can be use, for example, to allocate an array before reading in the data
 
 ```fortran
     use hdf5_utils
@@ -213,3 +214,52 @@ an array before reading in the data
     
 ```
 
+
+### Writing/reading by column
+
+It is sometimes convenient to write/read only single column of a multidimensional array.
+> **NOTE:** FORTRAN is a column oriented programming language.
+> This means that elements of each column is stored contiguously in memory,
+> and therefore has fastest access.
+> The HDF5 library is written in C, which is a column oriented language.
+> Since the FORTRAN library is just a wrapper around the C library,
+> the array written out to the HDF5 file is the transpose of the array we see in FORTRAN.
+> So we are actually reading in a 'row' along the last dimension in the dataset in the HDF5 file
+> as a column vector in FORTRAN.
+> Keep this in mind if you read access this data in another language,
+> like C or Python.
+For instance, if a 2d array is a set of data vectors that we wish to perform a long operation on,
+then we can read in one vector at a time and treat it before moving onto the next one.
+
+```fortran
+    use hdf5_utils
+
+    integer(HID_T) :: file_id
+
+    integer :: j, k
+    real(dp) :: array(4)
+    
+    write(*,'(A)') ""
+    write(*,'(A)') "Test writing out by column"
+    
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='WRITE')
+
+    ! create dataset
+    call hdf_create_dataset(file_id, "vdata3", (/4,6,8/), "double")
+
+    ! loop through array
+    do j = 1, 6
+       do k = 1, 8
+          array = real(j+k-1, dp)
+          call hdf_write_vector_to_dataset(file_id, "vdata3", (/ j, k /), array)
+       end do
+    end do
+
+    call hdf_read_vector_from_dataset(file_id, "data3", (/1,1/), array)
+    write(*,*) array
+    
+    ! close file
+    call hdf_close_file(file_id)
+
+```
