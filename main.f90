@@ -60,6 +60,8 @@ contains
 
     integer :: rank, dims(6)
     integer, allocatable :: test4(:,:,:,:)
+
+    real(dp) :: array(4)
     
     write(*,'(A)') "test_high_level"
 
@@ -195,6 +197,26 @@ contains
     ! close file
     call hdf_close_file(file_id)
 
+
+
+
+    !
+    ! writing by column
+    !
+
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='WRITE')
+
+    ! create dataset
+    call hdf_create_dataset(file_id, "vdata3", (/4,6,8/), "double")
+
+    array = 1.0_dp
+
+    call hdf_write_vector_to_dataset(file_id, "vdata3", (/ 1, 2 /), array)
+
+    
+    ! close file
+    call hdf_close_file(file_id)
     
   end subroutine test_high_level
 

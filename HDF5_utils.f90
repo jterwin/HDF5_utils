@@ -32,14 +32,17 @@ module HDF5_utils
   implicit none
 
   private
-  public :: HID_T
-  public :: hdf_set_print_messages, hdf_exists
+
   public :: hdf_open_file, hdf_close_file
   public :: hdf_create_group, hdf_open_group, hdf_close_group
-  public :: hdf_get_rank, hdf_get_dims
+  public :: hdf_exists, hdf_get_rank, hdf_get_dims
   public :: hdf_write_dataset, hdf_read_dataset
   public :: hdf_write_attribute, hdf_read_attribute
+  public :: hdf_create_dataset
+  public :: hdf_write_vector_to_dataset
+  public :: HID_T, hdf_set_print_messages
 
+  
   !>  \brief Generic interface to write a dataset
   !> 
   !>  Supported types
@@ -67,6 +70,30 @@ module HDF5_utils
      module procedure hdf_write_dataset_double_5
      module procedure hdf_write_dataset_double_6
   end interface hdf_write_dataset
+
+
+  !>  \brief Generic interface to write a vector to dataset
+  !>
+  !>  The vector is is written out in along the fast dimension
+  !>  (column oriented in FORTRAN, row oriented in the HDF5 file).
+  !>  So the vector should have the same length as the first dimension
+  !>  of the dataset, and the offset should agree with dims(2:rank) of
+  !>  of the dataset.
+  !>
+  !>  Supported types
+  !>   - integers (scalar and 1d-6d arrays)
+  !>   - doubles (scalar and 1d-6d arrays)
+  !   - reals (scalar and 1d-6d arrays)
+  !   - string (scalar and 1d-6d arrays)
+  !>
+  !>  \param[in] loc_d     local id in file
+  !>  \param[in] dset_name name of dataset
+  !>  \param[in] offset    position within the dataset
+  !>  \param[in] vector    data array to be written
+  interface hdf_write_vector_to_dataset
+     module procedure hdf_write_vector_to_dataset_double
+     module procedure hdf_write_vector_to_dataset_integer
+  end interface hdf_write_vector_to_dataset
 
   !>  \brief Generic interface to read a dataset of doubles
   !> 
@@ -426,7 +453,7 @@ contains
     ! get rank (ndims)
     call h5sget_simple_extent_ndims_f(dspace_id, rank, hdferror)
     
-    ! get rank (ndims)
+    ! get dims
     call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
     dims(1:rank) = int(dset_dims(1:rank))
 
@@ -438,6 +465,195 @@ contains
   
   !     - hdf_get_kind   (H5Dget_type)
 
+
+  
+  !!----------------------------------------------------------------------------------------
+  !!--------------------------------hdf_write_vector_to_dataset-----------------------------
+  !!----------------------------------------------------------------------------------------
+
+
+  !>  \brief create a dataset 'dset_name' with shape 'dset_dims' of type 'dset_type'
+  subroutine hdf_create_dataset(loc_id, dset_name, dset_dims, dset_type)
+
+    integer(HID_T), intent(in) :: loc_id        !< local id in file
+    character(len=*), intent(in) :: dset_name   !< name of dataset
+    integer, intent(in) :: dset_dims(:)         !< dimensions of the dataset
+    character(len=*), intent(in) :: dset_type   !< type of dataset (integer or double)
+
+    integer :: rank
+    integer(SIZE_T) :: dims(8)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
+    end if
+    
+    ! set rank and dims
+    rank = size(dset_dims, 1)
+    dims(1:rank) = int(dset_dims, SIZE_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    select case (dset_type)
+    case('integer')
+       call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+       call h5dclose_f(dset_id, hdferror)
+    case('double')
+       call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+       call h5dclose_f(dset_id, hdferror)
+    case default
+       write(*,'(A,A,A)') "---> ERROR: dset_type ", dset_type," not supported"
+    end select
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    
+    ! close all id's
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    
+  end subroutine hdf_create_dataset
+
+  subroutine hdf_write_vector_to_dataset_double(loc_id, dset_name, offset, vector)
+    
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: offset(:)            ! position within dataset
+    real(dp), intent(in) :: vector(:)           ! data to be written
+
+    integer(HID_T) :: dset_id, dspace_id, mspace_id
+    integer :: rank
+    integer(HSIZE_T) :: dset_dims(6), max_dims(6), mdims(1)
+    integer(HSIZE_T) :: hs_count(6), hs_offset(6) ! Hyperslab offset
+    integer :: hdferror
+
+    integer :: i
+    character(len=32) :: format_string
+    
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_vector_to_dataset_double"
+    end if
+
+    ! open dataset
+    call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
+
+    ! get dataspace
+    call h5dget_space_f(dset_id, dspace_id, hdferror)
+
+    ! get rank (ndims), and dims
+    call h5sget_simple_extent_ndims_f(dspace_id, rank, hdferror)
+    call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
+
+    ! check size and offset
+    if (size(vector,1) == dset_dims(1)) then
+
+       if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
+
+          ! select hyperslab in dataset (note: convert FORTRAN offset to C offset by subtracting 1)
+          hs_count(1) = dset_dims(1)
+          hs_count(2:rank) = 1
+          hs_offset(1) = 0
+          hs_offset(2:rank) = offset(1:rank-1) - 1
+          call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
+
+          ! set mspace to a vector
+          mdims(1) = size(vector,1)
+          call h5screate_simple_f(1, mdims, mspace_id, hdferror)
+
+          ! write out vector
+          call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, vector, mdims, hdferror, mspace_id, dspace_id)
+
+          ! close mspace_id
+          call h5sclose_f(mspace_id, hdferror)  
+
+       else
+          write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
+          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+       end if
+       
+    else
+       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+            ", is not constent with dset_dims(1)=", dset_dims(1)
+    endif
+    
+    ! close id's
+    call h5sclose_f(dspace_id, hdferror)  
+    call h5dclose_f(dset_id, hdferror)
+    
+  end subroutine hdf_write_vector_to_dataset_double
+
+  subroutine hdf_write_vector_to_dataset_integer(loc_id, dset_name, offset, vector)
+    
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    integer, intent(in) :: offset(:)               ! position within dataset
+    integer, intent(in) :: vector(:)           ! data to be written
+
+    integer(HID_T) :: dset_id, dspace_id, mspace_id
+    integer :: rank
+    integer(HSIZE_T) :: dset_dims(6), max_dims(6), mdims(1)
+    integer(HSIZE_T) :: hs_count(6), hs_offset(6) ! Hyperslab offset
+    integer :: hdferror
+
+    integer :: i
+    character(len=32) :: format_string
+    
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_vector_to_dataset_double"
+    end if
+
+    ! open dataset
+    call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
+
+    ! get dataspace
+    call h5dget_space_f(dset_id, dspace_id, hdferror)
+
+    ! get rank (ndims), and dims
+    call h5sget_simple_extent_ndims_f(dspace_id, rank, hdferror)
+    call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
+
+    ! check size and offset
+    if (size(vector,1) == dset_dims(1)) then
+
+       if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
+
+          ! select hyperslab in dataset (note: convert FORTRAN offset to C offset by subtracting 1)
+          hs_count(1) = dset_dims(1)
+          hs_count(2:rank) = 1
+          hs_offset(1) = 0
+          hs_offset(2:rank) = offset(1:rank-1) - 1
+          call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
+
+          ! set mspace to a vector
+          mdims(1) = size(vector,1)
+          call h5screate_simple_f(1, mdims, mspace_id, hdferror)
+
+          ! write out vector
+          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, vector, mdims, hdferror, mspace_id, dspace_id)
+
+          ! close mspace_id
+          call h5sclose_f(mspace_id, hdferror)  
+
+       else
+          write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
+          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+       end if
+       
+    else
+       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+            ", is not constent with dset_dims(1)=", dset_dims(1)
+    endif
+    
+    ! close id's
+    call h5sclose_f(dspace_id, hdferror)  
+    call h5dclose_f(dset_id, hdferror)
+    
+  end subroutine hdf_write_vector_to_dataset_integer
   
   !!----------------------------------------------------------------------------------------
   !!--------------------------------hdf_write_dataset_double--------------------------------
