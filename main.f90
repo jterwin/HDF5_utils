@@ -143,9 +143,9 @@ contains
     ! write attribute to the file (and get version from Makefile)
     call date_and_time(DATE=date, TIME=time)
     call hdf_write_attribute(file_id, "", "date/time", date // ": " // time)
-#if defined(VERSION)
-    call hdf_write_attribute(file_id, "", "version", VERSION)
-#endif
+! #if defined(VERSION)
+!     call hdf_write_attribute(file_id, "", "version", VERSION)
+! #endif
 
     ! close file
     call hdf_close_file(file_id)
