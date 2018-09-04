@@ -31,3 +31,7 @@
 
 *.h5
 docs/html/
+
+# ignore build
+bin
+build

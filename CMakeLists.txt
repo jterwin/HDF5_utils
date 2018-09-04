@@ -28,4 +28,4 @@ set( CMAKE_VERBOSE_MAKEFILE on )
 target_link_libraries(hdf5_test ${HDF5_LIBRARIES})
 
 add_library(hdf5_utils STATIC ${PROJECT_SOURCE_DIR}/HDF5_utils.f90)
-install(TARGETS hdf5_utils DESTINATION bin)
+install(TARGETS hdf5_utils DESTINATION ${PROJECT_SOURCE_DIR})
