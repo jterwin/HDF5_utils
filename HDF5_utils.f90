@@ -817,300 +817,17 @@ contains
     
   end subroutine hdf_read_vector_from_dataset_integer
   
-  !!----------------------------------------------------------------------------------------
-  !!--------------------------------hdf_write_dataset_double--------------------------------
-  !!----------------------------------------------------------------------------------------
-
-  !  \brief writes a scalar to an hdf5 file
-  subroutine hdf_write_dataset_double_0(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data                ! data to be written
-
-    integer(SIZE_T) :: dims(1)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
-    end if
-    
-    ! set rank and dims
-    dims = (/ 0 /)
-
-    ! create dataspace
-    call h5screate_f(H5S_SCALAR_F, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_0
-
-  !  \brief writes a 1d array to an hdf5 file
-  subroutine hdf_write_dataset_double_1(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:)             ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(1)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_1: " // trim(dset_name)
-    end if
-    
-    ! set rank and dims
-    rank = 1
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_1
-
-  !  \brief writes a 2d array to an hdf5 file
-  subroutine hdf_write_dataset_double_2(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:)           ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(2)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_2: " // trim(dset_name)
-    end if
-
-    ! set rank and dims
-    rank = 2
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_2
-
-  !  \brief writes a 3d array to an hdf5 file
-  subroutine hdf_write_dataset_double_3(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:)         ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(3)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_3: " // trim(dset_name)
-    end if
-
-    ! set rank and dims
-    rank = 3
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_3
-
-  !  \brief writes a 4d array to an hdf5 file
-  subroutine hdf_write_dataset_double_4(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:)       ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(4)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_4: " // trim(dset_name)
-    end if
-
-    ! set rank and dims
-    rank = 4
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_4
-
-  !  \brief writes a 5d array to an hdf5 file
-  subroutine hdf_write_dataset_double_5(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:)     ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(5)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_5: " // trim(dset_name)
-    end if
-
-    ! set rank and dims
-    rank = 5
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_5
-
-  !  \brief writes a 6d array to an hdf5 file
-  subroutine hdf_write_dataset_double_6(loc_id, dset_name, data)
-
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:,:)   ! data to be written
-
-    integer :: rank
-    integer(SIZE_T) :: dims(6)
-    integer(HID_T) :: dset_id, dspace_id
-    integer :: hdferror
-
-    if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_6: " // trim(dset_name)
-    end if
-
-    ! set rank and dims
-    rank = 6
-    dims = shape(data, KIND=HID_T)
-
-    ! create dataspace
-    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
-
-    ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
-
-    ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
-    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
-    
-    ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
-    call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
-
-  end subroutine hdf_write_dataset_double_6
-
 
   !!----------------------------------------------------------------------------------------
-  !!--------------------------------hdf_write_dataset_double--------------------------------
+  !!--------------------------------hdf_write_dataset_integer--------------------------------
   !!----------------------------------------------------------------------------------------
-
   
   !  \brief writes a scalar to an hdf5 file
-  subroutine hdf_write_dataset_integer_0(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_0(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data                 ! data to be written
+    integer, intent(in) :: array                 ! data to be written
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -1132,7 +849,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1144,11 +861,11 @@ contains
   end subroutine hdf_write_dataset_integer_0
 
   !  \brief writes a 1d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_1(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_1(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:)              ! data to be written
+    integer, intent(in) :: array(:)              ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1161,7 +878,7 @@ contains
 
     ! set rank and dims
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1172,7 +889,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1184,11 +901,11 @@ contains
   end subroutine hdf_write_dataset_integer_1
 
   !  \brief writes a 2d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_2(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_2(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:)            ! data to be written
+    integer, intent(in) :: array(:,:)            ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1201,7 +918,7 @@ contains
 
     ! set rank and dims
     rank = 2
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1212,7 +929,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1224,11 +941,11 @@ contains
   end subroutine hdf_write_dataset_integer_2
 
   !  \brief writes a 3d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_3(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_3(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:)          ! data to be written
+    integer, intent(in) :: array(:,:,:)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1241,7 +958,7 @@ contains
 
     ! set rank and dims
     rank = 3
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1252,7 +969,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1264,11 +981,11 @@ contains
   end subroutine hdf_write_dataset_integer_3
 
   !  \brief writes a 4d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_4(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_4(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:)        ! data to be written
+    integer, intent(in) :: array(:,:,:,:)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1281,7 +998,7 @@ contains
 
     ! set rank and dims
     rank = 4
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1292,7 +1009,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1304,11 +1021,11 @@ contains
   end subroutine hdf_write_dataset_integer_4
 
   !  \brief writes a 5d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_5(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_5(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:,:)      ! data to be written
+    integer, intent(in) :: array(:,:,:,:,:)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1321,7 +1038,7 @@ contains
 
     ! set rank and dims
     rank = 5
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1332,7 +1049,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1344,11 +1061,11 @@ contains
   end subroutine hdf_write_dataset_integer_5
 
   !  \brief writes a 6d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_6(loc_id, dset_name, data)
+  subroutine hdf_write_dataset_integer_6(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:,:,:)    ! data to be written
+    integer, intent(in) :: array(:,:,:,:,:,:)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1361,7 +1078,7 @@ contains
 
     ! set rank and dims
     rank = 6
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
@@ -1372,7 +1089,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1383,18 +1100,300 @@ contains
 
   end subroutine hdf_write_dataset_integer_6
 
-  
+
+  !!----------------------------------------------------------------------------------------
+  !!--------------------------------hdf_write_dataset_double--------------------------------
+  !!----------------------------------------------------------------------------------------
+
+  !  \brief writes a scalar to an hdf5 file
+  subroutine hdf_write_dataset_double_0(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array                ! data to be written
+
+    integer(SIZE_T) :: dims(1)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
+    end if
+    
+    ! set rank and dims
+    dims = (/ 0 /)
+
+    ! create dataspace
+    call h5screate_f(H5S_SCALAR_F, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_0
+
+  !  \brief writes a 1d array to an hdf5 file
+  subroutine hdf_write_dataset_double_1(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:)             ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(1)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_1: " // trim(dset_name)
+    end if
+    
+    ! set rank and dims
+    rank = 1
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_1
+
+  !  \brief writes a 2d array to an hdf5 file
+  subroutine hdf_write_dataset_double_2(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:,:)           ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(2)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_2: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 2
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_2
+
+  !  \brief writes a 3d array to an hdf5 file
+  subroutine hdf_write_dataset_double_3(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:,:,:)         ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(3)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_3: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 3
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_3
+
+  !  \brief writes a 4d array to an hdf5 file
+  subroutine hdf_write_dataset_double_4(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:)       ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(4)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_4: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 4
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_4
+
+  !  \brief writes a 5d array to an hdf5 file
+  subroutine hdf_write_dataset_double_5(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:,:)     ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(5)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_5: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 5
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_5
+
+  !  \brief writes a 6d array to an hdf5 file
+  subroutine hdf_write_dataset_double_6(loc_id, dset_name, array)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:,:,:)   ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(6)
+    integer(HID_T) :: dset_id, dspace_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_double_6: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 6
+    dims = shape(array, KIND=HID_T)
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+    
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_double_6
+
+ 
   !!---------------------------------------------------------------------------------------
   !!--------------------------------hdf_read_dataset_integer--------------------------------
   !!---------------------------------------------------------------------------------------
 
-
   !  \brief reads a scalar from an hdf5 file
-  subroutine hdf_read_dataset_integer_0(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_0(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data                ! data to be written
+    integer, intent(out) :: array                ! data to be written
 
 
     integer(SIZE_T) :: dims(1)
@@ -1413,7 +1412,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1423,11 +1422,11 @@ contains
   end subroutine hdf_read_dataset_integer_0
 
   !  \brief reads a 1d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_1(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_1(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:)             ! data to be written
+    integer, intent(out) :: array(:)             ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1440,14 +1439,14 @@ contains
 
     ! set rank and dims
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1457,11 +1456,11 @@ contains
   end subroutine hdf_read_dataset_integer_1
 
   !  \brief reads a 2d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_2(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_2(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:)           ! data to be written
+    integer, intent(out) :: array(:,:)           ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1474,14 +1473,14 @@ contains
 
     ! set rank and dims
     rank = 2
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1491,11 +1490,11 @@ contains
   end subroutine hdf_read_dataset_integer_2
 
   !  \brief reads a 3d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_3(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_3(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:)         ! data to be written
+    integer, intent(out) :: array(:,:,:)         ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1508,14 +1507,14 @@ contains
 
     ! set rank and dims
     rank = 3
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1525,11 +1524,11 @@ contains
   end subroutine hdf_read_dataset_integer_3
 
   !  \brief reads a 4d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_4(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_4(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:)       ! data to be written
+    integer, intent(out) :: array(:,:,:,:)       ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1542,14 +1541,14 @@ contains
 
     ! set rank and dims
     rank = 4
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1559,11 +1558,11 @@ contains
   end subroutine hdf_read_dataset_integer_4
 
   !  \brief reads a 5d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_5(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_5(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:,:)     ! data to be written
+    integer, intent(out) :: array(:,:,:,:,:)     ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1576,14 +1575,14 @@ contains
 
     ! set rank and dims
     rank = 5
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1593,11 +1592,11 @@ contains
   end subroutine hdf_read_dataset_integer_5
 
   !  \brief reads a 6d array from an hdf5 file
-  subroutine hdf_read_dataset_integer_6(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_integer_6(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:,:,:)   ! data to be written
+    integer, intent(out) :: array(:,:,:,:,:,:)   ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1610,14 +1609,14 @@ contains
 
     ! set rank and dims
     rank = 6
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1633,11 +1632,11 @@ contains
 
 
   !  \brief reads a scalar from an hdf5 file
-  subroutine hdf_read_dataset_double_0(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_0(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data               ! data to be written
+    real(dp), intent(out) :: array               ! data to be written
 
 
     integer(SIZE_T) :: dims(1)
@@ -1656,7 +1655,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1666,11 +1665,11 @@ contains
   end subroutine hdf_read_dataset_double_0
 
   !  \brief reads a 1d array from an hdf5 file
-  subroutine hdf_read_dataset_double_1(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_1(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:)            ! data to be written
+    real(dp), intent(out) :: array(:)            ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1683,14 +1682,14 @@ contains
 
     ! set rank and dims
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1700,11 +1699,11 @@ contains
   end subroutine hdf_read_dataset_double_1
 
   !  \brief reads a 2d array from an hdf5 file
-  subroutine hdf_read_dataset_double_2(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_2(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:)          ! data to be written
+    real(dp), intent(out) :: array(:,:)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1717,14 +1716,14 @@ contains
 
     ! set rank and dims
     rank = 2
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1734,11 +1733,11 @@ contains
   end subroutine hdf_read_dataset_double_2
 
   !  \brief reads a 3d array from an hdf5 file
-  subroutine hdf_read_dataset_double_3(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_3(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:)        ! data to be written
+    real(dp), intent(out) :: array(:,:,:)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1751,14 +1750,14 @@ contains
 
     ! set rank and dims
     rank = 3
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1768,11 +1767,11 @@ contains
   end subroutine hdf_read_dataset_double_3
 
   !  \brief reads a 4d array from an hdf5 file
-  subroutine hdf_read_dataset_double_4(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_4(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:)      ! data to be written
+    real(dp), intent(out) :: array(:,:,:,:)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1785,14 +1784,14 @@ contains
 
     ! set rank and dims
     rank = 4
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1802,11 +1801,11 @@ contains
   end subroutine hdf_read_dataset_double_4
 
   !  \brief reads a 5d array from an hdf5 file
-  subroutine hdf_read_dataset_double_5(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_5(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:)    ! data to be written
+    real(dp), intent(out) :: array(:,:,:,:,:)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1819,14 +1818,14 @@ contains
 
     ! set rank and dims
     rank = 5
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1836,11 +1835,11 @@ contains
   end subroutine hdf_read_dataset_double_5
 
   !  \brief reads a 6d array from an hdf5 file
-  subroutine hdf_read_dataset_double_6(loc_id, dset_name, data)
+  subroutine hdf_read_dataset_double_6(loc_id, dset_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:,:)  ! data to be written
+    real(dp), intent(out) :: array(:,:,:,:,:,:)  ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1853,14 +1852,14 @@ contains
 
     ! set rank and dims
     rank = 6
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! open dataset
     call h5dopen_f(loc_id, dset_name, dset_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1876,12 +1875,12 @@ contains
 
   
   !  \brief writes a scalar attribute
-  subroutine hdf_write_attr_double_0(loc_id, obj_name, attr_name, data)
+  subroutine hdf_write_attr_double_0(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    real(dp), intent(in) :: data                ! data to write to attribute
+    real(dp), intent(in) :: array                ! data to write to attribute
 
     !integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1909,7 +1908,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1924,12 +1923,12 @@ contains
   end subroutine hdf_write_attr_double_0
 
   !  \brief writes 1d array attribute
-  subroutine hdf_write_attr_double_1(loc_id, obj_name, attr_name, data)
+  subroutine hdf_write_attr_double_1(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    real(dp), intent(in) :: data(:)             ! data to write to attribute
+    real(dp), intent(in) :: array(:)             ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -1949,7 +1948,7 @@ contains
 
     ! create dataspace
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
     call h5screate_simple_f(rank, dims, aspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
@@ -1958,7 +1957,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -1973,12 +1972,12 @@ contains
   end subroutine hdf_write_attr_double_1
 
   !  \brief writes a scalar attribute
-  subroutine hdf_write_attr_integer_0(loc_id, obj_name, attr_name, data)
+  subroutine hdf_write_attr_integer_0(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    integer, intent(in) :: data                 ! data to write to attribute
+    integer, intent(in) :: array                 ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, aspace_id, attr_id
@@ -2005,7 +2004,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2020,12 +2019,12 @@ contains
   end subroutine hdf_write_attr_integer_0
 
   !  \brief writes 1d array attribute
-  subroutine hdf_write_attr_integer_1(loc_id, obj_name, attr_name, data)
+  subroutine hdf_write_attr_integer_1(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    integer, intent(in) :: data(:)              ! data to write to attribute
+    integer, intent(in) :: array(:)              ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -2045,7 +2044,7 @@ contains
 
     ! create dataspace
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
     call h5screate_simple_f(rank, dims, aspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
@@ -2054,7 +2053,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2069,12 +2068,12 @@ contains
   end subroutine hdf_write_attr_integer_1
 
   !  \brief writes a string attribute
-  subroutine hdf_write_attr_string(loc_id, obj_name, attr_name, data)
+  subroutine hdf_write_attr_string(loc_id, obj_name, attr_name, array)
   
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    character(len=*), intent(in) :: data        ! data to write to attribute
+    character(len=*), intent(in) :: array        ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, type_id, aspace_id, attr_id
@@ -2092,7 +2091,7 @@ contains
     end if
 
     ! create type_id and aspace_id
-    dims(1) = len(data, KIND=HID_T)
+    dims(1) = len(array, KIND=HID_T)
     call h5tcopy_f (H5T_NATIVE_CHARACTER, type_id, hdferror)
     !write(*,*) 'h5tcopy_f returns', type_id 
     call h5tset_size_f (type_id, dims(1), hdferror)
@@ -2104,7 +2103,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5awrite_f(attr_id, type_id, data, dims, hdferror)
+    call h5awrite_f(attr_id, type_id, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2126,12 +2125,12 @@ contains
 
   
   !  \brief writes a scalar attribute
-  subroutine hdf_read_attr_double_0(loc_id, obj_name, attr_name, data)
+  subroutine hdf_read_attr_double_0(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    real(dp), intent(out) :: data               ! data to write to attribute
+    real(dp), intent(out) :: array               ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, attr_id
@@ -2153,7 +2152,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2166,12 +2165,12 @@ contains
   end subroutine hdf_read_attr_double_0
 
   !  \brief reads 1d array attribute
-  subroutine hdf_read_attr_double_1(loc_id, obj_name, attr_name, data)
+  subroutine hdf_read_attr_double_1(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    real(dp), intent(out) :: data(:)            ! data to write to attribute
+    real(dp), intent(out) :: array(:)            ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -2191,14 +2190,14 @@ contains
 
     ! create dataspace
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create attribute
     call h5aopen_f(obj_id, attr_name, attr_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, data, dims, hdferror)
+    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2211,12 +2210,12 @@ contains
   end subroutine hdf_read_attr_double_1
 
   !  \brief writes a scalar attribute
-  subroutine hdf_read_attr_integer_0(loc_id, obj_name, attr_name, data)
+  subroutine hdf_read_attr_integer_0(loc_id, obj_name, attr_name, array)
     
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    integer, intent(out) :: data                ! data to write to attribute
+    integer, intent(out) :: array                ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, attr_id
@@ -2238,7 +2237,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2251,12 +2250,12 @@ contains
   end subroutine hdf_read_attr_integer_0
 
   !  \brief writes a scalar attribute
-  subroutine hdf_read_attr_integer_1(loc_id, obj_name, attr_name, data)
+  subroutine hdf_read_attr_integer_1(loc_id, obj_name, attr_name, array)
     
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    integer, intent(out) :: data(:)             ! data to write to attribute
+    integer, intent(out) :: array(:)             ! data to write to attribute
 
     integer :: rank
     integer(SIZE_T) :: dims(1)
@@ -2276,14 +2275,14 @@ contains
 
     ! create dataspace
     rank = 1
-    dims = shape(data, KIND=HID_T)
+    dims = shape(array, KIND=HID_T)
 
     ! create attribute
     call h5aopen_f(obj_id, attr_name, attr_id, hdferror)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, data, dims, hdferror)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
@@ -2296,12 +2295,12 @@ contains
   end subroutine hdf_read_attr_integer_1
 
   !  \brief writes a string attribute
-  subroutine hdf_read_attr_string(loc_id, obj_name, attr_name, data)
+  subroutine hdf_read_attr_string(loc_id, obj_name, attr_name, array)
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: obj_name    ! object name attribute will be attached to (if "" use loc_id)
     character(len=*), intent(in) :: attr_name   ! name of attribute
-    character(len=*), intent(out) :: data       ! data to write to attribute
+    character(len=*), intent(out) :: array       ! data to write to attribute
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: obj_id, type_id, attr_id
@@ -2319,7 +2318,7 @@ contains
     end if
 
     ! create type_id
-    dims(1) = len(data, KIND=HID_T)
+    dims(1) = len(array, KIND=HID_T)
     call h5tcopy_f (H5T_NATIVE_CHARACTER, type_id, hdferror)
     !write(*,*) 'h5tcopy_f returns', type_id 
     call h5tset_size_f (type_id, dims(1), hdferror)
@@ -2329,7 +2328,7 @@ contains
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
-    call h5aread_f(attr_id, type_id, data, dims, hdferror)
+    call h5aread_f(attr_id, type_id, array, dims, hdferror)
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
 
     ! close all id's

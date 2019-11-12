@@ -38,19 +38,14 @@ ifeq ($(UNAME_S),Darwin)
   LDFLAGS = -L/opt/local/lib
 endif
 
-# add include and library paths on HIPAS
+# add include and library paths on my linux mint laptop
 UNAME_N := $(shell uname -n)
-ifeq ($(UNAME_N),hipas.lpl.arizona.edu)
-  LDINC = -I/usr/local/include
-  LDFLAGS = -L/usr/local/lib
-  LDLIBS += -lrt -lz -ldl -lm -Wl,-rpath -Wl,/usr/local/lib
-
-  #LDINC = -I/usr/local/include
-  #LDLIB = -L/usr/lib64 -L/usr/local/lib
-
-  #LDINC = -I/usr/local/hdf5/include
-  #LDLIB = -L/usr/lib64 -L/usr/local/hdf5/lib
+ifeq ($(UNAME_N),justintnb-lm)
+  LDINC = -I/usr/include/hdf5/serial
+  LDFLAGS = -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 endif
+
+
 
 
 
