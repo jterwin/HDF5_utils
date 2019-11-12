@@ -6,39 +6,44 @@ program hdf5_test
   implicit none
   
   integer :: ii, jj, kk, ll
-  integer :: data0,  data2(4,6), data4(4,6,8,10)
-  real(dp) :: data1(8), data3(4,6,8)
+  integer :: data0, data1(8), data2(4,6), data3(4,6,8), data4(4,6,8,10)
+  real(sp) :: data2_sp(4,6)
+  real(dp) :: data2_dp(4,6)
 
   ! fill in data
   data0 = 42
   
   do ii = 1, 8
-     data1(ii) = 10 + ii
+    data1(ii) = 10 + ii
   end do
   
   do ii = 1, 4
-     do jj = 1, 6
-        data2(ii,jj) = (ii-1)*6 + jj
-     end do
+    do jj = 1, 6
+      data2(ii,jj) = (ii-1)*6 + jj
+    end do
   end do
 
   do ii = 1, 4
-     do jj = 1, 6
-        do kk = 1, 8
-           data3(ii,jj,kk) = ((ii-1)*6 + jj -1)*8 + kk
-        end do
-     end do
+    do jj = 1, 6
+      do kk = 1, 8
+        data3(ii,jj,kk) = ((ii-1)*6 + jj -1)*8 + kk
+      end do
+    end do
   end do
 
   do ii = 1, 4
-     do jj = 1, 6
-        do kk = 1, 8
-           do ll = 1, 10
-              data4(ii,jj,kk,ll) = (((ii-1)*6 + jj -1)*8 + kk - 1)*10 + ll
-           end do
+    do jj = 1, 6
+      do kk = 1, 8
+        do ll = 1, 10
+          data4(ii,jj,kk,ll) = (((ii-1)*6 + jj -1)*8 + kk - 1)*10 + ll
         end do
-     end do
+      end do
+    end do
   end do
+
+  write(*,*) sp, dp
+  data2_sp = real(data2, sp)
+  data2_dp = real(data2, dp) + 0.5_dp
 
   !call hdf5_types()
   !call test_low_level()
@@ -52,13 +57,15 @@ program hdf5_test
 
   call test_hl_read_dataset()
 
+  call test_hl_read_convert()
+
   call test_hl_attributes()
 
   call test_hl_groups()
 
   call test_hl_unkownsize()
 
-  call test_hl_bycolumn()
+  !call test_hl_bycolumn()
 
 contains
 
@@ -83,6 +90,9 @@ contains
     call hdf_write_dataset(file_id, "data2", data2)
     call hdf_write_dataset(file_id, "data3", data3)
     call hdf_write_dataset(file_id, "data4", data4)
+
+    call hdf_write_dataset(file_id, "data2_sp", data2_sp)
+    call hdf_write_dataset(file_id, "data2_dp", data2_dp)
 
     ! close file
     call hdf_close_file(file_id)
@@ -111,12 +121,51 @@ contains
     call hdf_read_dataset(file_id, "data2", data2)
     call hdf_read_dataset(file_id, "data3", data3)
     call hdf_read_dataset(file_id, "data4", data4)
+
+    call hdf_read_dataset(file_id, "data2_sp", data2_sp)
+    call hdf_read_dataset(file_id, "data2_dp", data2_dp)
     
     ! close file
     call hdf_close_file(file_id)
 
   end subroutine test_hl_read_dataset
 
+
+  !    
+  ! test reading and converting between types
+  !
+  subroutine test_hl_read_convert()
+
+    use hdf5_utils
+    
+    integer(HID_T) :: file_id
+    integer :: ii
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test reading dataset"
+
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+
+    ! read in some datasets 
+    call hdf_read_dataset(file_id, "data2_dp", data2)
+    call hdf_read_dataset(file_id, "data2_dp", data2_sp)
+    call hdf_read_dataset(file_id, "data2_dp", data2_dp)
+
+    do ii = 1,4
+      write(*,'(10(I5,3x))') data2(ii,:)
+    enddo
+    do ii = 1,4
+      write(*,'(10(F7.1,1x))') data2_sp(ii,:)
+    enddo
+    do ii = 1,4
+      write(*,'(10F8.2)') data2_dp(ii,:)
+    enddo
+
+    ! close file
+    call hdf_close_file(file_id)
+
+  end subroutine test_hl_read_convert
   
   !
   ! use attribute

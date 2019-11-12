@@ -1,6 +1,6 @@
 # HDF5_utils
 
-This library is to provide a high level interface into [HDF5](https://support.hdfgroup.org/HDF5/).
+This library is to provide a high level interface into [HDF5](https://portal.hdfgroup.org/display/support).
 This is, of course, based off HDF5's own High-Level module ([HDLT](https://support.hdfgroup.org/HDF5/doc/HL/RM_H5LT.html)) but customized to my own needs.
 
 The aim of this library is to:
@@ -27,7 +27,7 @@ subroutine   | inputs   | description
 `hdf_write_dataset` | `loc_id`, `dset_name`, `data` | write out array (or scalar)
 `hdf_read_dataset` | `loc_id`, `dset_name`, `data` | read in array (or scalar)
 `hdf_create_dataset` | `loc_id`, `dset_name`, `dset_dims`, `dset_type` | creates an empty dataset
-`hdf_write_vector_to_dataset` | `loc_id`, `dset_name`, `offset`, `vector` | write a vecotr to leading edge of dataset
+`hdf_write_vector_to_dataset` | `loc_id`, `dset_name`, `offset`, `vector` | write a vector to leading edge of dataset
 `hdf_read_vector_from_dataset` | `loc_id`, `dset_name`, `offset`, `vector` | read a 1d array from from leading edge of dataset
 `hdf_write_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | write out attribute array (or scalar)
 `hdf_read_attribute` | `loc_id`, `obj_name`, `attr_name`, `data` | read in attribute array (or scalar)
@@ -51,9 +51,10 @@ Here is a simple example of writing to a new HDF5 file:
     
     integer(HID_T) :: file_id
     
-    integer :: data0 = 12
-    integer :: data2(2,4)
-    real(dp) :: data3(4,6,8)
+    integer :: ii, jj, kk, ll
+    integer :: data0, data1(8), data2(4,6), data3(4,6,8), data4(4,6,8,10)
+    real(sp) :: data2_sp(4,6)
+    real(dp) :: data2_dp(4,6)
     
     !
     call hdf_set_print_messages(.true.)
@@ -67,6 +68,9 @@ Here is a simple example of writing to a new HDF5 file:
     call hdf_write_dataset(file_id, "data2", data2)
     call hdf_write_dataset(file_id, "data3", data3)
     call hdf_write_dataset(file_id, "data4", data4)
+
+    call hdf_write_dataset(file_id, "data2_sp", data2_sp)
+    call hdf_write_dataset(file_id, "data2_dp", data2_dp)
 
     ! close file
     call hdf_close_file(file_id)
@@ -82,9 +86,9 @@ Here is a simple examle of reading from an HDF5 file:
     
     integer(HID_T) :: file_id
     
-    integer :: data0 = 12
-    integer :: data2(2,4)
-    real(dp) :: data3(4,6,8)
+    integer :: data0, data1(8), data2(4,6), data3(4,6,8), data4(4,6,8,10)
+    real(sp) :: data2_sp(4,6)
+    real(dp) :: data2_dp(4,6)
     
     ! open file
     call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
@@ -95,6 +99,9 @@ Here is a simple examle of reading from an HDF5 file:
     call hdf_read_dataset(file_id, "data2", data2)
     call hdf_read_dataset(file_id, "data3", data3)
     call hdf_read_dataset(file_id, "data4", data4)
+
+    call hdf_read_dataset(file_id, "data2_sp", data2_sp)
+    call hdf_read_dataset(file_id, "data2_dp", data2_dp)
     
     ! close file
     call hdf_close_file(file_id)
@@ -102,6 +109,43 @@ Here is a simple examle of reading from an HDF5 file:
 ```
 
 The rank, dimension, and datatypes array should match that of the datasets in the HDF5 file, otherwise the HDF5 library will bring up and error.
+
+Note that HDF5 will convert the datatype on reading. So based on the above example
+```fortran
+    use hdf5_utils
+    
+    integer(HID_T) :: file_id
+    integer :: ii
+    
+    integer :: data2(4,6)
+    real(sp) :: data2_sp(4,6)
+    real(dp) :: data2_dp(4,6)
+    
+    ! open file
+    call hdf_open_file(file_id, "test_hl.h5", STATUS='OLD', ACTION='READ')
+
+    ! read in some datasets 
+    call hdf_read_dataset(file_id, "data2_dp", data2)
+    call hdf_read_dataset(file_id, "data2_dp", data2_sp)
+    call hdf_read_dataset(file_id, "data2_dp", data2_dp)
+
+    do ii = 1,4
+      write(*,'(10(I5,3x))') data2(ii,:)
+    enddo
+    do ii = 1,4
+      write(*,'(10(F7.1,1x))') data2_sp(ii,:)
+    enddo
+    do ii = 1,4
+      write(*,'(10F8.2)') data2_dp(ii,:)
+    enddo
+    
+    ! close file
+    call hdf_close_file(file_id)
+
+```
+
+This example will read in from a double precision dataset into an integer, real, and double precision array. 
+Note that the integer array will be the floor of the double/real array.
 
 ### Using Attributes
 
@@ -208,7 +252,7 @@ It is sometimes convenient to write/read only single column of a multidimensiona
 > **NOTE:** FORTRAN is a column oriented programming language.
 > This means that elements of each column is stored contiguously in memory,
 > and therefore has fastest access.
-> The HDF5 library is written in C, which is a column oriented language.
+> The HDF5 library is written in C, which is a row oriented language.
 > Since the FORTRAN library is just a wrapper around the C library,
 > the array written out to the HDF5 file is the transpose of the array we see in FORTRAN.
 > So we are actually reading in a 'row' along the last dimension in the dataset in the HDF5 file
