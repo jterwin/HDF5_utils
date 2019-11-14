@@ -110,6 +110,8 @@ Here is a simple examle of reading from an HDF5 file:
 
 The rank, dimension, and datatypes array should match that of the datasets in the HDF5 file, otherwise the HDF5 library will bring up and error.
 
+### Converting datatypes
+
 Note that HDF5 will convert the datatype on reading. So based on the above example
 ```fortran
     use hdf5_utils
@@ -146,6 +148,43 @@ Note that HDF5 will convert the datatype on reading. So based on the above examp
 
 This example will read in from a double precision dataset into an integer, real, and double precision array. 
 Note that the integer array will be the floor of the double/real array.
+
+For writing, just convert the data array before writing using the built in int & real functions
+
+### Chunking and compression
+
+An advanced and very useful feature of the HDF5 library is [chunking and compression](https://portal.hdfgroup.org/display/HDF5/Compressed+Datasets). 
+I have implemented a subset of this that I think is enough for my needs. 
+When writing the dataset, just pass the optional filter parameter (options are 'none', 'szip', 'gzip', and 'gzip+shuffle'). 
+Also, optionally there is the chucks parameter, which defined the size of data chunks in the dataset. 
+A great thing is, like converting datatypes, when reading no additional care needs to be taken because the HDF5 library will sort it out for you (see note below):
+
+```fortran
+    use hdf5_utils
+    
+    ! open file
+    call hdf_open_file(file_id, "test_hl_special.h5", STATUS='NEW')
+
+    ! write out some datasets
+    call hdf_write_dataset(file_id, "data0", data0)
+    call hdf_write_dataset(file_id, "data1", data1, filter='szip')
+    call hdf_write_dataset(file_id, "data2", data2, filter='gzip+shuffle')
+    call hdf_write_dataset(file_id, "data3", data3, filter='gzip+shuffle', chunks=(/4,6,1/))
+    call hdf_write_dataset(file_id, "data4", data4, chunks=(/2,3,4,2/))
+
+    call hdf_write_dataset(file_id, "data2_sp", data2_sp, filter='gzip+shuffle')
+    call hdf_write_dataset(file_id, "data2_dp", data2_dp, filter='gzip+shuffle')
+
+    ! close file
+    call hdf_close_file(file_id)
+```
+
+Note: that the efficiency of the compression and the writing/reading speed depend heavily on you data and you use cases. 
+For instance, one of my uses is to write out 3D GCM data, and then read in select vertical profiles for an interpolation.
+When I chunk by vertical profile (1,1,103), the compression was very inefficient. 
+When I chunk by horizontal slab (90,45,1), the compression is the about same as if I just chunk the whole set together. 
+So I have to determine for myself the tradoff between storage and speed.
+(In my case I chunk by horizontal slab so that each chunk is below the 1MB cache size, and read in a whole dataset and do multiple interpolations, until moving onto the next dataset).
 
 ### Using Attributes
 

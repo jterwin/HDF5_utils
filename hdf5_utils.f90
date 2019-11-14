@@ -41,7 +41,7 @@ module HDF5_utils
   public :: hdf_write_attribute, hdf_read_attribute
   public :: hdf_create_dataset
   public :: hdf_write_vector_to_dataset, hdf_read_vector_from_dataset
-  public :: HID_T, hdf_set_print_messages
+  public :: HID_T, hdf_set_print_messages, hdf_set_default_filter
 
   
   !>  \brief Generic interface to write a dataset
@@ -55,6 +55,8 @@ module HDF5_utils
   !>  \param[in] loc_id     local id in file
   !>  \param[in] dset_name  name of dataset
   !>  \param[in] array      data array to be written
+  !>  \param[in] chunks     (optional) chunk size for dataset
+  !>  \param[in] filter     (optional) filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
   interface hdf_write_dataset
      module procedure hdf_write_dataset_integer_0
      module procedure hdf_write_dataset_integer_1
@@ -213,6 +215,13 @@ module HDF5_utils
 
   !
   logical :: hdf_print_messages = .false.
+
+  ! 
+  character(len=32) :: hdf_default_filter = 'none'
+  integer :: hdf_gzip_level = 6  ! 0-9
+  integer :: hdf_szip_pixels_per_block = 8    ! should be even number less than 32 (https://portal.hdfgroup.org/display/HDF5/H5P_SET_SZIP)
+  character(len=2) :: hdf_szip_options = 'NN'  ! H5_SZIP_NN_OM_F or H5_SZIP_EC_OM_F
+
   
 contains
 
@@ -228,6 +237,43 @@ contains
     hdf_print_messages = val_print_messages
 
   end subroutine hdf_set_print_messages
+
+  !>  \brief Sets the value of hdf_print_messages
+  !>
+  !>  
+  subroutine hdf_set_default_filter(filter, gzip_level, szip_pixels_per_block, szip_options)
+
+    character(len=*), intent(in) :: filter  !<  new value for hdf_print_messages
+    integer, optional, intent(in) :: gzip_level 
+    integer, optional, intent(in) :: szip_pixels_per_block
+    character(len=2), optional, intent(in) :: szip_options
+
+    hdf_default_filter = filter
+
+    if (present(gzip_level)) then
+      hdf_gzip_level = gzip_level
+    endif
+
+    if(present(szip_pixels_per_block)) then
+      hdf_szip_pixels_per_block = szip_pixels_per_block
+    endif
+
+    if (present(szip_options)) then
+      !hdf_szip_options = szip_options
+      if (szip_options == 'NN') then
+        hdf_szip_options = 'NN'
+      elseif (szip_options == 'EC') then
+        hdf_szip_options = 'EC'
+      else
+        write(*,'(A)') "-->hdf_set_default_filter: warning szip_options "//trim(szip_options)//" not recognized"
+        stop
+      endif
+    endif
+    !write(*,'(A,I0,A,I0)') ' H5_SZIP_NN_OM_F=', H5_SZIP_NN_OM_F, ', H5_SZIP_EC_OM_F=', H5_SZIP_EC_OM_F
+
+    write(*,*) filter, gzip_level, szip_pixels_per_block, szip_options
+
+  end subroutine hdf_set_default_filter
   
   
   !>  \brief Check if location exists.
@@ -981,17 +1027,76 @@ contains
   end subroutine hdf_read_vector_from_dataset_double
 
 
+
+  !!----------------------------------------------------------------------------------------
+  !!--------------------------------hdf_set_property_list--------------------------------
+  !!----------------------------------------------------------------------------------------
+
+  !  \brief set property list for chunking and compression
+  subroutine hdf_set_property_list(plist_id, rank, dims, cdims, filter)
+
+    integer(HID_T), intent(inout) :: plist_id
+    integer, intent(in) :: rank
+    integer(SIZE_T), intent(in) :: dims(:)
+    integer(SIZE_T), intent(inout) :: cdims(:)
+    character(len=*), intent(in) :: filter
+
+    integer :: hdferror
+    integer :: szip_pixels_per_block, szip_options_mask
+
+    ! set chunk (if needed)
+    if (filter == 'none') then
+      if (all(cdims .ne. 0)) then
+        call h5pset_chunk_f(plist_id, rank, cdims, hdferror)
+      endif
+    else
+      if (any(cdims == 0)) then
+        cdims = dims
+      endif
+      call h5pset_chunk_f(plist_id, rank, cdims, hdferror)
+    endif
+
+    ! set filter
+    select case (filter)
+      case ('none')
+        continue
+      case ('szip')
+        if (hdf_szip_options == 'NN') then
+          szip_options_mask = H5_SZIP_NN_OM_F
+        elseif (hdf_szip_options == 'EC') then
+          szip_options_mask = H5_SZIP_EC_OM_F
+        else
+          write(*,'(A)') "-->hdf_set_property_list: warning hdf_szip_options "//trim(hdf_szip_options)//" not recognized"
+          continue
+        endif
+        szip_pixels_per_block = min(int(product(cdims),4), hdf_szip_pixels_per_block)
+        call H5Pset_szip_f(plist_id, szip_options_mask, szip_pixels_per_block, hdferror)
+      case('gzip')
+        call h5pset_deflate_f(plist_id, hdf_gzip_level, hdferror)
+      case('gzip+shuffle')
+        call h5pset_shuffle_f(plist_id, hdferror)
+        call h5pset_deflate_f(plist_id, hdf_gzip_level, hdferror)
+      case default
+        write(*,'(A)') "-->hdf_set_property_list: warning filter "//trim(filter)//" not recognized"
+    end select
+
+  end subroutine hdf_set_property_list
+
+
+
   !!----------------------------------------------------------------------------------------
   !!--------------------------------hdf_write_dataset_integer--------------------------------
   !!----------------------------------------------------------------------------------------
 
 
   !  \brief writes a scalar to an hdf5 file
-  subroutine hdf_write_dataset_integer_0(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_0(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array                 ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array                      ! data to be written
+    integer, optional, intent(in) :: chunks           ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -1003,6 +1108,16 @@ contains
 
     ! set rank and dims
     dims = (/ 0 /)
+
+    !
+    if (present(filter)) then
+      write(*,'(A)') "--->hdf_write_dataset_integer_0: warning filter not used"
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      write(*,'(A)') "--->hdf_write_dataset_integer_0: warning chunks not used"
+    endif
 
     ! create dataspace
     call h5screate_f(H5S_SCALAR_F, dspace_id, hdferror)
@@ -1025,15 +1140,18 @@ contains
   end subroutine hdf_write_dataset_integer_0
 
   !  \brief writes a 1d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_1(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_1(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:)              ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:)                   ! data to be written
+    integer, optional, intent(in) :: chunks(1)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(1)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(1), cdims(1)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1044,12 +1162,30 @@ contains
     rank = 1
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1057,23 +1193,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_1
 
   !  \brief writes a 2d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_2(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_2(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:,:)            ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:,:)                 ! data to be written
+    integer, optional, intent(in) :: chunks(2)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(2)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(2), cdims(2)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1084,12 +1222,30 @@ contains
     rank = 2
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1097,23 +1253,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_2
 
   !  \brief writes a 3d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_3(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_3(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:,:,:)          ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:,:,:)               ! data to be written
+    integer, optional, intent(in) :: chunks(3)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(3)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(3), cdims(3)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1124,12 +1282,30 @@ contains
     rank = 3
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1137,23 +1313,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_3
 
   !  \brief writes a 4d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_4(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_4(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:,:,:,:)        ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:,:,:,:)             ! data to be written
+    integer, optional, intent(in) :: chunks(4)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(4)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(4), cdims(4)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1164,12 +1342,31 @@ contains
     rank = 4
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1177,23 +1374,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_4
 
   !  \brief writes a 5d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_5(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_5(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:,:,:,:,:)      ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:,:,:,:,:)           ! data to be written
+    integer, optional, intent(in) :: chunks(5)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(5)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(5), cdims(5)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1204,12 +1403,30 @@ contains
     rank = 5
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1217,23 +1434,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_5
 
   !  \brief writes a 6d array to an hdf5 file
-  subroutine hdf_write_dataset_integer_6(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_integer_6(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: array(:,:,:,:,:,:)    ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    integer, intent(in) :: array(:,:,:,:,:,:)         ! data to be written
+    integer, optional, intent(in) :: chunks(6)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(6)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(6), cdims(6)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1244,12 +1463,30 @@ contains
     rank = 6
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1257,10 +1494,9 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_integer_6
 
@@ -1271,11 +1507,13 @@ contains
 
 
   !  \brief writes a scalar to an hdf5 file
-  subroutine hdf_write_dataset_real_0(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_0(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array                ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array                     ! data to be written
+    integer, optional, intent(in) :: chunks(1)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -1287,6 +1525,16 @@ contains
     
     ! set rank and dims
     dims = (/ 0 /)
+
+    !
+    if (present(filter)) then
+      write(*,'(A)') "--->hdf_write_dataset_real_0: warning filter not used"
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      write(*,'(A)') "--->hdf_write_dataset_real_0: warning chunks not used"
+    endif
 
     ! create dataspace
     call h5screate_f(H5S_SCALAR_F, dspace_id, hdferror)
@@ -1302,22 +1550,23 @@ contains
     
     ! close all id's
     call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
 
   end subroutine hdf_write_dataset_real_0
 
   !  \brief writes a 1d array to an hdf5 file
-  subroutine hdf_write_dataset_real_1(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_1(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:)             ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:)                  ! data to be written
+    integer, optional, intent(in) :: chunks(1)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(1)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(1), cdims(1)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1328,12 +1577,30 @@ contains
     rank = 1
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1341,23 +1608,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_1
 
   !  \brief writes a 2d array to an hdf5 file
-  subroutine hdf_write_dataset_real_2(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_2(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:,:)           ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:,:)                ! data to be written
+    integer, optional, intent(in) :: chunks(2)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(2)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(2), cdims(2)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1368,12 +1637,30 @@ contains
     rank = 2
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1381,23 +1668,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_2
 
   !  \brief writes a 3d array to an hdf5 file
-  subroutine hdf_write_dataset_real_3(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_3(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:,:,:)         ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:,:,:)              ! data to be written
+    integer, optional, intent(in) :: chunks(3)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(3)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(3), cdims(3)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1408,12 +1697,30 @@ contains
     rank = 3
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1421,23 +1728,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_3
 
   !  \brief writes a 4d array to an hdf5 file
-  subroutine hdf_write_dataset_real_4(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_4(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:,:,:,:)       ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:,:,:,:)            ! data to be written
+    integer, optional, intent(in) :: chunks(4)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle')
 
     integer :: rank
-    integer(SIZE_T) :: dims(4)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(4), cdims(4)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1448,12 +1757,30 @@ contains
     rank = 4
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1461,23 +1788,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_4
 
   !  \brief writes a 5d array to an hdf5 file
-  subroutine hdf_write_dataset_real_5(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_5(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:,:,:,:,:)     ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:,:,:,:,:)          ! data to be written
+    integer, optional, intent(in) :: chunks(5)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(5)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(5), cdims(5)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1488,12 +1817,30 @@ contains
     rank = 5
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1501,23 +1848,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_5
 
   !  \brief writes a 6d array to an hdf5 file
-  subroutine hdf_write_dataset_real_6(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_real_6(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(in) :: array(:,:,:,:,:,:)   ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(sp), intent(in) :: array(:,:,:,:,:,:)        ! data to be written
+    integer, optional, intent(in) :: chunks(6)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(6)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(6), cdims(6)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1528,12 +1877,30 @@ contains
     rank = 6
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_REAL, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1541,10 +1908,9 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_real_6
 
@@ -1555,11 +1921,13 @@ contains
 
 
   !  \brief writes a scalar to an hdf5 file
-  subroutine hdf_write_dataset_double_0(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_0(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array                ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array                     ! data to be written
+    integer, optional, intent(in) :: chunks(1)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer(SIZE_T) :: dims(1)
     integer(HID_T) :: dset_id, dspace_id
@@ -1571,6 +1939,16 @@ contains
     
     ! set rank and dims
     dims = (/ 0 /)
+
+    !
+    if (present(filter)) then
+      write(*,'(A)') "--->hdf_write_dataset_double_0: warning filter not used"
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      write(*,'(A)') "--->hdf_write_dataset_double_0: warning chunks not used"
+    endif
 
     ! create dataspace
     call h5screate_f(H5S_SCALAR_F, dspace_id, hdferror)
@@ -1593,15 +1971,18 @@ contains
   end subroutine hdf_write_dataset_double_0
 
   !  \brief writes a 1d array to an hdf5 file
-  subroutine hdf_write_dataset_double_1(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_1(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:)             ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:)                  ! data to be written
+    integer, optional, intent(in) :: chunks(1)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(1)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(1), cdims(1)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1612,12 +1993,30 @@ contains
     rank = 1
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1625,23 +2024,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_1
 
   !  \brief writes a 2d array to an hdf5 file
-  subroutine hdf_write_dataset_double_2(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_2(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:,:)           ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:,:)                ! data to be written
+    integer, optional, intent(in) :: chunks(2)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(2)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(2), cdims(2)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1652,12 +2053,30 @@ contains
     rank = 2
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1665,23 +2084,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_2
 
   !  \brief writes a 3d array to an hdf5 file
-  subroutine hdf_write_dataset_double_3(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_3(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:,:,:)         ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:,:,:)              ! data to be written
+    integer, optional, intent(in) :: chunks(3)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(3)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(3), cdims(3)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1692,12 +2113,30 @@ contains
     rank = 3
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1705,23 +2144,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_3
 
   !  \brief writes a 4d array to an hdf5 file
-  subroutine hdf_write_dataset_double_4(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_4(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:,:,:,:)       ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:)            ! data to be written
+    integer, optional, intent(in) :: chunks(4)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(4)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(4), cdims(4)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1732,12 +2173,30 @@ contains
     rank = 4
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1745,23 +2204,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_4
 
   !  \brief writes a 5d array to an hdf5 file
-  subroutine hdf_write_dataset_double_5(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_5(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:,:,:,:,:)     ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:,:)          ! data to be written
+    integer, optional, intent(in) :: chunks(5)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(5)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(5), cdims(5)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1772,12 +2233,30 @@ contains
     rank = 5
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1785,23 +2264,25 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_5
 
   !  \brief writes a 6d array to an hdf5 file
-  subroutine hdf_write_dataset_double_6(loc_id, dset_name, array)
+  subroutine hdf_write_dataset_double_6(loc_id, dset_name, array, chunks, filter)
 
-    integer(HID_T), intent(in) :: loc_id        ! local id in file
-    character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: array(:,:,:,:,:,:)   ! data to be written
+    integer(HID_T), intent(in) :: loc_id              ! local id in file
+    character(len=*), intent(in) :: dset_name         ! name of dataset
+    real(dp), intent(in) :: array(:,:,:,:,:,:)        ! data to be written
+    integer, optional, intent(in) :: chunks(6)        ! chunk size for dataset
+    character(len=*), optional, intent(in) :: filter  ! filter to use ('none', 'szip', 'gzip', 'gzip+shuffle') 
 
     integer :: rank
-    integer(SIZE_T) :: dims(6)
-    integer(HID_T) :: dset_id, dspace_id
+    integer(SIZE_T) :: dims(6), cdims(6)
+    integer(HID_T) :: dset_id, dspace_id, plist_id
+    character(len=32) :: filter_case
     integer :: hdferror
 
     if (hdf_print_messages) then
@@ -1812,12 +2293,30 @@ contains
     rank = 6
     dims = shape(array, KIND=HID_T)
 
+    !
+    if (present(filter)) then
+      filter_case = filter
+    else
+      filter_case = hdf_default_filter
+    endif
+
+    ! set chunk (if needed)
+    if (present(chunks)) then
+      cdims = int(chunks, SIZE_T)
+    else
+      cdims = 0
+    endif
+
+    ! create and set property list
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, hdferror)
+    call hdf_set_property_list(plist_id, rank, dims, cdims, filter_case)
+
     ! create dataspace
     call h5screate_simple_f(rank, dims, dspace_id, hdferror)
     !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
 
     ! create dataset
-    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
+    call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror, dcpl_id=plist_id)
     !write(*,'(A20,I0)') "h5dcreate: ", hdferror
 
     ! write dataset
@@ -1825,10 +2324,9 @@ contains
     !write(*,'(A20,I0)') "h5dwrite: ", hdferror
     
     ! close all id's
-    call h5dclose_f(dset_id, hdferror)
-    !write(*,'(A20,I0)') "h5dclose: ", hdferror
     call h5sclose_f(dspace_id, hdferror)
-    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+    call h5pclose_f(plist_id, hdferror)
+    call h5dclose_f(dset_id, hdferror)
 
   end subroutine hdf_write_dataset_double_6
 
@@ -2086,7 +2584,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(sp), intent(out) :: array               ! data to be written
+    real(sp), intent(out) :: array              ! data to be written
 
 
     integer(SIZE_T) :: dims(1)

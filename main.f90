@@ -43,7 +43,7 @@ program hdf5_test
 
   write(*,*) sp, dp
   data2_sp = real(data2, sp)
-  data2_dp = real(data2, dp) + 0.5_dp
+  data2_dp = real(data2, dp)
 
   !call hdf5_types()
   !call test_low_level()
@@ -59,11 +59,13 @@ program hdf5_test
 
   call test_hl_read_convert()
 
-  call test_hl_attributes()
+  call test_hl_write_dataset_special()
 
-  call test_hl_groups()
+  !call test_hl_attributes()
 
-  call test_hl_unkownsize()
+  !call test_hl_groups()
+
+  !call test_hl_unkownsize()
 
   !call test_hl_bycolumn()
 
@@ -166,6 +168,38 @@ contains
     call hdf_close_file(file_id)
 
   end subroutine test_hl_read_convert
+
+
+  !
+  ! writing with compression
+  !
+  subroutine test_hl_write_dataset_special()
+
+    use hdf5_utils
+
+    integer(HID_T) :: file_id
+
+    write(*,'(A)') ""
+    write(*,'(A)') "Test writing dataset"
+
+    ! open file
+    call hdf_open_file(file_id, "test_hl_special.h5", STATUS='NEW')
+
+    ! write out some datasets
+    call hdf_write_dataset(file_id, "data0", data0)
+    call hdf_write_dataset(file_id, "data1", data1, filter='szip')
+    call hdf_write_dataset(file_id, "data2", data2, filter='gzip+shuffle')
+    call hdf_write_dataset(file_id, "data3", data3, filter='gzip+shuffle', chunks=(/4,6,1/))
+    call hdf_write_dataset(file_id, "data4", data4, chunks=(/2,3,4,2/))
+
+    call hdf_write_dataset(file_id, "data2_sp", data2_sp, filter='gzip+shuffle')
+    call hdf_write_dataset(file_id, "data2_dp", data2_dp, filter='gzip+shuffle')
+
+    ! close file
+    call hdf_close_file(file_id)
+
+  end subroutine test_hl_write_dataset_special
+
   
   !
   ! use attribute

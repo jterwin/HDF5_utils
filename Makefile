@@ -52,11 +52,10 @@ endif
 .PHONY: clean docs
 
 
-hdf5_test.x: constants.o HDF5_utils.o main.o 
+hdf5_test.x: constants.o hdf5_utils.o main.o 
 	$(FC) $(FFLAGS) $(LDINC) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
-main.o: constants.o HDF5_utils.o
-HDF_utils.o: constants.o
+main.o: constants.o hdf5_utils.o
 
 %.o : %.f90
 	$(FC) $(FFLAGS) $(LDINC) -c -o $@ $<
